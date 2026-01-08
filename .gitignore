@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 original_code/ldm/
+original_code/logs/
+original_code/taming/
+original_code/models/
