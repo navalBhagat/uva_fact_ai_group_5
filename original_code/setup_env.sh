@@ -13,4 +13,8 @@ cd ./src/autodp
 echo "Installing autodp..."
 pip install -e .
 
+echo "Installing taming-transformers..."
+cd ../taming-transformers
+pip install -e .
+
 echo ""
