@@ -1,3 +1,4 @@
+# This seems to be the config for the CelebA-32 column in Table 5
 model:
   base_learning_rate: 5.0e-07
   target: ldm.models.diffusion.ddpm.LatentDiffusion
@@ -61,8 +62,8 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    # batch_size: 384
-    batch_size: 350
+    batch_size: 384
+    # batch_size: 350
     num_workers: 4
     wrap: false
     train:
@@ -85,3 +86,4 @@ lightning:
         increase_log_steps: False
   trainer:
     benchmark: True
+    max_epochs: 40
