@@ -7,9 +7,11 @@ Models](https://openaccess.thecvf.com/content/ICCV2025/papers/Tsai_Differentiall
 
 ## Installation
 
-The directory `original_code` contains the original code from the paper's
-authors. To set up the Python environment using Anaconda, run the script
-`original_code/setup_env.sh`.
+The directory `dp_lora` contains the original code from the paper's
+authors. To set up the Python environment using Anaconda, run the script: 
+```
+dp_lora/setup_env.sh
+```
 
 ## Usage
 
