@@ -13,7 +13,4 @@ module load 2024
 module load Anaconda3/2024.06-1
 
 cd ~/fact/dp_lora
-./setup_env.sh
-source activate ldm
-pip install academictorrents
-pip install accelerate
+srun ./setup_env.sh

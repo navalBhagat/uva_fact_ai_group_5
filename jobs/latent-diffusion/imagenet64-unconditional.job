@@ -14,4 +14,4 @@ module load Anaconda3/2024.06-1
 
 source activate ldm
 cd ~/fact/dp_lora
-python main.py --base ./reproducibility_experiments/latent-diffusion/imagenet64-unconditional.yaml -t --gpus "0," -l logs/latent-diffusion
+srun python main.py --base ./reproducibility_experiments/latent-diffusion/imagenet64-unconditional.yaml -t --gpus "0," -l logs/latent-diffusion

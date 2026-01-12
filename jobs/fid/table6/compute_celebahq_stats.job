@@ -17,7 +17,7 @@ cd ~/fact/dp_lora
 mkdir -p output/table6
 
 # CelebA-HQ stats (256x256)
-python ./fid/compute_dataset_stats.py \
+srun python ./fid/compute_dataset_stats.py \
     --dataset ldm.data.celebahq.CelebAHQ \
     --args size:256 \
     --output output/table6/celebahq_train_stats_256.npz

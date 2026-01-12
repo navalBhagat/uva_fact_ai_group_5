@@ -17,7 +17,7 @@ cd ~/fact/dp_lora
 mkdir -p output
 
 # CelebA-32 stats
-python ./fid/compute_dataset_stats.py --dataset ldm.data.celeba.CelebATrain --args size:32 --output output/celeba_train_stats_32.npz
+srun python ./fid/compute_dataset_stats.py --dataset ldm.data.celeba.CelebATrain --args size:32 --output output/celeba_train_stats_32.npz
 
 # CelebA-64 stats
-python ./fid/compute_dataset_stats.py --dataset ldm.data.celeba.CelebATrain --args size:64 --output output/celeba_train_stats_64.npz
+srun python ./fid/compute_dataset_stats.py --dataset ldm.data.celeba.CelebATrain --args size:64 --output output/celeba_train_stats_64.npz

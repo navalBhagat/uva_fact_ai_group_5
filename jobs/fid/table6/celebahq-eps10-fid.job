@@ -16,11 +16,11 @@ source activate ldm
 cd ~/fact/dp_lora
 
 # Compute sample stats
-python ./fid/compute_samples_stats.py \
+srun python ./fid/compute_samples_stats.py \
     --samples output/table6/celebahq_eps10.pt \
     --output output/table6/celebahq_eps10_stats.npz
 
 # Calculate FID
-python ./fid/compute_fid.py \
+srun python ./fid/compute_fid.py \
     --path1 output/table6/celebahq_train_stats_256.npz \
     --path2 output/table6/celebahq_eps10_stats.npz

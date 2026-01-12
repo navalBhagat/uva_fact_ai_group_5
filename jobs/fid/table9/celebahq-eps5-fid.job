@@ -15,10 +15,10 @@ module load Anaconda3/2024.06-1
 source activate ldm
 cd ~/fact/dp_lora
 
-python ./fid/compute_samples_stats.py \
+srun python ./fid/compute_samples_stats.py \
     --samples output/table9/celebahq_eps5.pt \
     --output output/table9/celebahq_eps5_stats.npz
 
-python ./fid/compute_fid.py \
+srun python ./fid/compute_fid.py \
     --path1 output/celebahq_train_stats_256.npz \
     --path2 output/table9/celebahq_eps5_stats.npz

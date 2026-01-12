@@ -14,4 +14,4 @@ module load Anaconda3/2024.06-1
 
 source activate ldm
 cd ~/fact/dp_lora
-python main.py --base ./reproducibility_experiments/autoencoder/autoencoder_kl_imagenet32.yaml -t --gpus "0," -l logs/autoencoder
+srun python main.py --base ./reproducibility_experiments/autoencoder/autoencoder_kl_imagenet32.yaml -t --gpus "0," -l logs/autoencoder

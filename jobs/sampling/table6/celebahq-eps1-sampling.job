@@ -16,7 +16,7 @@ source activate ldm
 cd ~/fact/dp_lora
 mkdir -p output/table6
 
-python ./sampling/conditional_sampling.py \
+srun python ./sampling/conditional_sampling.py \
     --yaml ./reproducibility_experiments/finetuning/celebahq_class_eps1.yaml \
     --ckpt <PATH_TO_CELEBAHQ_EPS1_CKPT> \
     --output output/table6/celebahq_eps1.pt \

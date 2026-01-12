@@ -16,7 +16,7 @@ source activate ldm
 cd ~/fact/dp_lora
 mkdir -p output/table12
 
-python ./sampling/unconditional_sampling.py \
+srun python ./sampling/unconditional_sampling.py \
     --yaml ./reproducibility_experiments/finetuning/celeba64-dp-eps10-rank64.yaml \
     --ckpt <PATH_TO_CELEBA64_R64_CKPT> \
     -o output/table12/celeba64_r64.pt \

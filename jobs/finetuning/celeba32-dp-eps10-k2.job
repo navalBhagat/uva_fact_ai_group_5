@@ -14,4 +14,4 @@ module load Anaconda3/2024.06-1
 
 source activate ldm
 cd ~/fact/dp_lora
-python main.py --base ./reproducibility_experiments/finetuning/celeba32-dp-eps10.yaml -t --gpus "0," --accelerator gpu -l logs/finetuning/celeba32
+srun python main.py --base ./reproducibility_experiments/finetuning/celeba32-dp-eps10.yaml -t --gpus "0," --accelerator gpu -l logs/finetuning/celeba32

@@ -16,4 +16,10 @@ echo "Installing taming-transformers..."
 cd ../taming-transformers
 pip install -e .
 
+echo "Installing academic torrents" 
+pip install academictorrents
+
+echo "Installing accelerate" 
+pip install accelerate
+
 echo ""
