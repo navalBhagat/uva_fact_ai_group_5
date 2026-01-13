@@ -3,7 +3,9 @@ import numpy as np
 from PIL import Image
 from torchvision import datasets
 
-
+# Since the code uses an older version of torchvision, the link to EMNIST is
+# broken. We need to manually change the url and filename parameters to make
+# the automatic download work.
 datasets.EMNIST.url = "https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip"
 datasets.EMNIST.filename = "gzip.zip"
 
@@ -44,9 +46,11 @@ class EMNISTBase(datasets.EMNIST):
 
 class EMNISTTrain(EMNISTBase):
     def __init__(self, split="letters", **kwargs):
-        super().__init__(datadir="EMNIST_Train", split=split, train=True, download=True, **kwargs)
+        super().__init__(datadir="EMNIST_Train", split=split,
+                         train=True, download=True, **kwargs)
 
 
 class EMNISTVal(EMNISTBase):
     def __init__(self, split="letters", **kwargs):
-        super().__init__(datadir="EMNIST_Val", split=split, train=False, download=True, **kwargs)
+        super().__init__(datadir="EMNIST_Val", split=split,
+                         train=False, download=True, **kwargs)
