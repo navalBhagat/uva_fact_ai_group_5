@@ -43,7 +43,7 @@ model:
     # Differential privacy options (also requires trainer.max_steps to be set)
     dp_config:
       enabled: True
-      epsilon: 1
+      epsilon: 5
       delta: 1.0e-5
       max_grad_norm: 0.001
       poisson_sampling: True
