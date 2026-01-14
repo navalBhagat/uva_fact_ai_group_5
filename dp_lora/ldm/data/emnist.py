@@ -14,8 +14,9 @@ class EMNISTBase(datasets.EMNIST):
     def __init__(self, datadir, size=None, split="digits", **kwargs):
         self.size = size
         self.split = split
+        # On Snellius, it is preferred to store the data in scratch-local,
+        # which is found at the $TMPDIR variable.
         cachedir = os.environ.get("TMPDIR", os.path.expanduser("~/.cache"))
-        print(os.path.join(cachedir, datadir))
         super().__init__(root=os.path.join(cachedir, datadir), split=split, **kwargs)
 
     def __getitem__(self, index):

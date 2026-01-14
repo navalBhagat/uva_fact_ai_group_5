@@ -47,7 +47,7 @@ model:
       params:
         embed_dim: 3
         monitor: "val/rec_loss"
-        ckpt_path: '/root/autodl-tmp/log/2024-04-28T23-22-06_autoencoder_kl_emnist32_4x4x3/checkpoints/last.ckpt'
+        ckpt_path: '/home/scur0003/fact/dp_lora/logs/autoencoder/2026-01-13T12-57-54_autoencoder_kl_emnist32_4x4x3/checkpoints/last.ckpt'
         ddconfig:
           double_z: True
           z_channels: 3
@@ -78,13 +78,17 @@ data:
     train:
       target: ldm.data.emnist.EMNISTBase
       params:
+        datadir: /scratch-local/62246
         size: 32 
         train: True
+        download: True
     validation:
       target: ldm.data.emnist.EMNISTBase
       params:
+        datadir: /scratch-local/62246
         size: 32
         train: False
+        download: True
 
 lightning:
   callbacks:
