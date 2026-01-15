@@ -21,7 +21,7 @@ model:
     log_every_t: 200
     use_ema: true
     use_model_lora: true
-    model_lora_r: 16
+    model_lora_r: 8
     model_lora_target: [to_out.Linear]
     use_cond_lora: false
     DPDM_k: 4
