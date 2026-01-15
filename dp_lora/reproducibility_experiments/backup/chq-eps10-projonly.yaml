@@ -22,7 +22,7 @@ model:
     use_ema: true
     use_model_lora: true
     model_lora_r: 16
-    model_lora_target: [proj_out]
+    model_lora_target: [to_out.Linear]
     use_cond_lora: false
     DPDM_k: 4
     dp_config:

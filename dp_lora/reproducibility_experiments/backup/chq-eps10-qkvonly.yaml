@@ -22,7 +22,7 @@ model:
     use_ema: true
     use_model_lora: true
     model_lora_r: 16
-    model_lora_target: [qkv]
+    model_lora_target: [to_q, to_v, to_k]
     use_cond_lora: false
     DPDM_k: 4
     dp_config:
