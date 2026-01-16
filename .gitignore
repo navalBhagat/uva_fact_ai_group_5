@@ -208,6 +208,9 @@ __marimo__/
 
 **/src/
 **/logs/
-**/taming/ 
+**/taming/
+
+# ckpt files (too big)
+*.ckpt
 
 *.out
