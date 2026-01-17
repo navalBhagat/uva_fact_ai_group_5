@@ -9,12 +9,50 @@ from PIL import Image
 import io
 import os
 import pickle
+from huggingface_hub import snapshot_download
+import gdown
 
 parquet_dir = "/home/scur0003/.cache/CelebAHQ/dataset/data"
 out_root = os.path.expanduser("~/.cache/CelebAHQ")
 img_dir = os.path.join(out_root, "images")
 os.makedirs(img_dir, exist_ok=True)
 
+# Download CelebAHQ dataset from Hugging Face
+dataset_dir = os.path.join(out_root, "dataset")
+if not os.path.exists(parquet_dir):
+    print(f"Downloading CelebAHQ dataset to {dataset_dir}...")
+    try:
+        snapshot_download(
+            repo_id="korexyz/celeba-hq-256x256",
+            repo_type="dataset",
+            local_dir=dataset_dir,
+            resume_download=True
+        )
+        print(f"Dataset downloaded successfully to {dataset_dir}")
+    except Exception as e:
+        print(f"Error downloading dataset: {e}")
+        raise
+else:
+    print(f"Dataset already found at {dataset_dir}")
+
+# Download CelebA attributes file
+attr_file = os.path.join(out_root, "list_attr_celeba.txt")
+if not os.path.exists(attr_file):
+    print(f"Downloading CelebA attributes file to {attr_file}...")
+    try:
+        gdown.download(
+            "https://drive.google.com/uc?export=download&id=0B7EVK8r0v71pblRyaVFSWGxPY0U",
+            attr_file,
+            quiet=False
+        )
+        print(f"Attributes file downloaded successfully")
+    except Exception as e:
+        print(f"Error downloading attributes file: {e}")
+        raise
+else:
+    print(f"Attributes file already found at {attr_file}")
+
+# Process parquet files and extract images
 parquet_files = sorted([os.path.join(parquet_dir, f)
                         for f in os.listdir(parquet_dir) if
                         f.endswith(".parquet")])
