@@ -35,7 +35,7 @@ class CelebAHQ(Dataset):
         return len(self.split_celebahq)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.root, "images", f"{index}.jpg")
+        img_path = os.path.join(self.root, "images", f"img{index:08}.png")
         image = Image.open(img_path)
         image = pil_to_tensor(image)
         image = resize(image, self.image_size, antialias=True)
@@ -98,7 +98,9 @@ class CelebAHQ(Dataset):
 
         self.idx_to_attr = torch.empty((len(self), CelebAHQ.NUM_BINARY_ATTRS), dtype=torch.int)
         for index, celebahq_idx in enumerate(self.split_celebahq):
-            attrs_list = celeba_to_attr[self.celebahq_to_celeba[celebahq_idx]]
+            celeba_idx = self.celebahq_to_celeba[celebahq_idx]
+            celeba_idx = f"{int(celeba_idx)+1:06d}.jpg"
+            attrs_list = celeba_to_attr[celeba_idx]
             for j in range(len(attrs_list)):
                 self.idx_to_attr[index, j] = 1 if attrs_list[j] == "1" else 0
 
