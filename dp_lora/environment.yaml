@@ -39,3 +39,4 @@ dependencies:
       - accelerate
       - academictorrents
       - gdown
+      - codecarbon
