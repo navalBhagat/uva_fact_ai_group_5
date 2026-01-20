@@ -22,14 +22,14 @@ model:
     use_ema: false
     use_model_lora: true
     model_lora_r: 8
-    model_lora_target: [to_q, to_v, to_k, to_out.Linear]
+    model_lora_target: [to_q, to_v, to_k, to_out.0]
     use_cond_lora: false
     DPDM_k: 2
     dp_config:
       enabled: true
       epsilon: 10
       delta: 1.0e-05
-      max_grad_norm: 0.0005
+      max_grad_norm: 0.00025
       poisson_sampling: true
       max_batch_size: 8
     unet_config:

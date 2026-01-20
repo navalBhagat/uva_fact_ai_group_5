@@ -24,10 +24,10 @@ model:
     model_lora_r: 8
     model_lora_target: [to_q, to_v, to_k, to_out.0]
     use_cond_lora: false
-    DPDM_k: 2
+    DPDM_k: 4
     dp_config:
       enabled: true
-      epsilon: 5
+      epsilon: 10
       delta: 1.0e-05
       max_grad_norm: 0.0005
       poisson_sampling: true

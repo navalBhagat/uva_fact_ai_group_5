@@ -27,11 +27,11 @@ model:
     DPDM_k: 2
     dp_config:
       enabled: true
-      epsilon: 5
+      epsilon: 10
       delta: 1.0e-05
       max_grad_norm: 0.0005
       poisson_sampling: true
-      max_batch_size: 8
+      max_batch_size: 4
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:

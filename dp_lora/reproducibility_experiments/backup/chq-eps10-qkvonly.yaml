@@ -24,7 +24,7 @@ model:
     model_lora_r: 8
     model_lora_target: [to_q, to_v, to_k]
     use_cond_lora: false
-    DPDM_k: 4
+    DPDM_k: 2
     dp_config:
       enabled: true
       epsilon: 10
