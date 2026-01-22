@@ -16,6 +16,9 @@ from callbacks.image_logger import ImageLogger                  # noqa: F401
 from callbacks.setup import SetupCallback                       # noqa: F401
 from ldm.data.util import DataModuleFromConfig, WrappedDataset  # noqa: F401
 
+# code carbon
+from codecarbon import OfflineEmissionsTracker
+
 
 def get_parser(**parser_kwargs):
     def str2bool(v):
@@ -220,6 +223,16 @@ if __name__ == "__main__":
     cfgdir = os.path.join(logdir, "configs")
     seed_everything(opt.seed)
 
+    os.makedirs(logdir, exist_ok=True)
+    # code carbon
+    # Create tracker early so it knows where to write emissions.csv (inside logdir)
+    carbon_tracker = OfflineEmissionsTracker(
+        country_iso_code="NLD",   # Snellius is in Netherlands
+        output_dir=logdir,        # emissions.csv goes into the run folder
+        save_to_file=True,
+        log_level="info",
+    )
+
     try:
         # init and save configs
         configs = [OmegaConf.load(cfg) for cfg in opt.base]
@@ -420,6 +433,11 @@ if __name__ == "__main__":
         signal.signal(signal.SIGUSR1, melk)
         signal.signal(signal.SIGUSR2, divein)
 
+        # code carbon
+        # Start tracking only on rank 0 to avoid duplicate trackers in DDP.
+        if opt.train and trainer.global_rank == 0:
+            carbon_tracker.start()
+
         # run
         if opt.train:
             try:
@@ -438,11 +456,17 @@ if __name__ == "__main__":
             debugger.post_mortem()
         raise
     finally:
+        # code carbon
+        if carbon_tracker is not None and "trainer" in locals():
+            if trainer.global_rank == 0:
+                emissions = carbon_tracker.stop()
+                print("CodeCarbon emissions (kg CO2):", emissions)
+
         # move newly created debug project to debug_runs
         if opt.debug and not opt.resume and trainer.global_rank == 0:
             dst, name = os.path.split(logdir)
             dst = os.path.join(dst, "debug_runs", name)
             os.makedirs(os.path.split(dst)[0], exist_ok=True)
             os.rename(logdir, dst)
-        if trainer.global_rank == 0:
+        if "trainer" in locals() and trainer.global_rank == 0:
             print(trainer.profiler.summary())
