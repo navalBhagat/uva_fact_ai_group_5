@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 from omegaconf.errors import ConfigAttributeError
 import torch
 from torchvision.utils import save_image
-
+from codecarbon import OfflineEmissionsTracker
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 
@@ -63,6 +63,16 @@ def main(args):
 
     num_samples_per_class = args.num_samples // len(args.classes)
     print(f"[INFO]: Will generate {num_samples_per_class} samples per class for {len(args.classes)} classes")
+    
+    # code carbon
+    # Create tracker early so it knows where to write emissions.csv (inside logdir)
+    carbon_tracker = OfflineEmissionsTracker(
+        country_iso_code="NLD",   # Snellius is in Netherlands
+        output_dir=args.output,        # emissions.csv goes into the run folder
+        save_to_file=True,
+        log_level="info",
+    )
+    carbon_tracker.start()
 
     with model.ema_scope():
         # Get the conditioning information for each label
@@ -97,6 +107,9 @@ def main(args):
                 batch_samples = model.decode_first_stage(batch_samples).cpu()
                 all_samples.append(batch_samples)
 
+    emissions = carbon_tracker.stop()
+    print("CodeCarbon emissions (kg CO2):", emissions)
+    
     # Collate images and save
     images = torch.vstack(all_samples)
     if args.output.endswith(".pt"):
@@ -128,3 +141,4 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         main(args)
+        
