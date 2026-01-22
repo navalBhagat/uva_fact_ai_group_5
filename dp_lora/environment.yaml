@@ -39,4 +39,4 @@ dependencies:
       - accelerate
       - academictorrents
       - gdown
-      - codecarbon
+      - codecarbon==3.2.1
