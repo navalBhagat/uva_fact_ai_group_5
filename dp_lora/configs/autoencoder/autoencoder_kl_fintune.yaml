@@ -1,0 +1,72 @@
+model:
+  base_learning_rate: 5e-6
+  target: ldm.models.autoencoder.AutoencoderKL
+  params:
+    ckpt_path: /home/scur0003/fact/dp_lora_backup/models/ldm/cin256
+    monitor: val/rec_loss
+    embed_dim: 3
+    lossconfig:
+      target: ldm.modules.losses.LPIPSWithDiscriminator
+      params:
+        disc_start: 50001
+        kl_weight: 1.0e-06
+        disc_weight: 0.5
+
+    dp_config:
+      enabled: true
+      epsilon: 1
+      delta: 1.0e-06
+      max_grad_norm: 0.0005
+      poisson_sampling: true
+      max_batch_size: 10
+
+    ddconfig:
+      double_z: true
+      z_channels: 3
+      resolution: 64
+      in_channels: 3
+      out_ch: 3
+      ch: 192
+      ch_mult:
+      - 1
+      - 2
+      num_res_blocks: 2
+      attn_resolutions:
+      - 16
+      - 8
+      dropout: 0.0
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 1024
+    num_workers: 6
+    wrap: false
+    train:
+      target: ldm.data.celebahq.CelebAHQ
+      params:
+        split: train
+        target_type: class
+        class_attrs:
+        - Male
+        size: 256
+    validation:
+      target: ldm.data.celebahq.CelebAHQ
+      params:
+        split: test
+        target_type: class
+        class_attrs:
+        - Male
+        size: 256
+
+lightning:
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    benchmark: True
+    accumulate_grad_batches: 2

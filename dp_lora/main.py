@@ -16,6 +16,10 @@ from callbacks.image_logger import ImageLogger                  # noqa: F401
 from callbacks.setup import SetupCallback                       # noqa: F401
 from ldm.data.util import DataModuleFromConfig, WrappedDataset  # noqa: F401
 
+from attribute import get_attr_dict
+from torch import ones, zeros_like
+from torch.utils.data import DataLoader, TensorDataset
+
 # code carbon
 from codecarbon import OfflineEmissionsTracker
 
@@ -258,6 +262,19 @@ if __name__ == "__main__":
         # model
         model = instantiate_from_config(config.model)
 
+        # Perform parameter attribution
+        k = config.data.params.train.size
+        sample_input = ones((1,3,k,k))
+        sample_dataset = TensorDataset(sample_input)
+        sample_data_loader = DataLoader(sample_dataset, batch_size=1)
+        attr_dict = get_attr_dict(model, sample_data_loader, device='cuda')
+        mask_list = None
+        for name, param in model.named_parameters():
+            if name in attr_dict:
+                mask_list.append(attr_dict[name])
+            else:
+                mask_list.append(zeros_like(param))
+                
         # trainer and callbacks
         trainer_kwargs = dict()
 

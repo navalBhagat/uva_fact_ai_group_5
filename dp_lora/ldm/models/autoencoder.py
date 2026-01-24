@@ -1,13 +1,16 @@
 import torch
 import pytorch_lightning as pl
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import LambdaLR
 from contextlib import contextmanager
 
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 
 from ldm.modules.diffusionmodules.model import Encoder, Decoder
 from ldm.modules.distributions.distributions import DiagonalGaussianDistribution
-
+from ldm.data.util import get_sample_rate
+import opcacus
+from ldm.privacy.privacy_analysis import compute_noise_multiplier, get_noisysgd_mechanism
 from ldm.util import instantiate_from_config
 
 
@@ -22,6 +25,7 @@ class VQModel(pl.LightningModule):
                  image_key="image",
                  colorize_nlabels=None,
                  monitor=None,
+                 dp_config=None,
                  batch_resize_range=None,
                  scheduler_config=None,
                  lr_g_factor=1.0,
@@ -59,6 +63,7 @@ class VQModel(pl.LightningModule):
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
         self.scheduler_config = scheduler_config
         self.lr_g_factor = lr_g_factor
+        self.dp_config = dp_config
 
     @contextmanager
     def ema_scope(self, context=None):
@@ -208,6 +213,36 @@ class VQModel(pl.LightningModule):
         opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(),
                                     lr=lr_d, betas=(0.5, 0.9))
 
+        if self.dp_config and self.dp_config.enabled:
+            self.privacy_engine = opacus.PrivacyEngine()
+            # Compute the noise scale required for DP-SGD
+            data_loader = self.get_train_dataloader()
+            self.sample_rate = get_sample_rate(data_loader)
+            self.noise_scale = compute_noise_multiplier(
+                self.dp_config,
+                self.sample_rate,
+                self.trainer.max_epochs
+            )
+
+            _, opt, _ = self.privacy_engine.make_private(
+                module=self,
+                optimizer=opt,
+                # The sensitivity of replace-one DP is double that of add-remove
+                #   DP, so the noise multiplier needs to be doubled in DPSGD
+                noise_multiplier=self.noise_scale,
+                max_grad_norm=self.dp_config.max_grad_norm,
+                # NOTE: The data loader is recreated in main.py, so these parameters do nothing
+                data_loader=data_loader,
+                poisson_sampling=self.dp_config.poisson_sampling,
+            )
+
+            print()
+            print("#### Differential Privacy ####")
+            print("  Epsilon:", self.dp_config.epsilon)
+            print("  Delta:", self.dp_config.delta)
+            print("  Noise Scale:", self.noise_scale)
+            print()
+            
         if self.scheduler_config is not None:
             scheduler = instantiate_from_config(self.scheduler_config)
 
@@ -314,6 +349,7 @@ class AutoencoderKL(pl.LightningModule):
         sd = torch.load(path, map_location="cpu")["state_dict"]
         keys = list(sd.keys())
         for k in keys:
+            print(k)
             for ik in ignore_keys:
                 if k.startswith(ik):
                     print("Deleting key {} from state_dict.".format(k))
