@@ -18,6 +18,8 @@ python scripts/extract_celeba_hq.py
 ```
 This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`.
 
+**MNIST**: TODO
+
 **Models**: Download the cin256 checkpoint:
 ```bash
 cd dp_lora/models/ldm/cin256
@@ -57,6 +59,8 @@ sbatch jobs/celebahq/sampling/celebahq_eps1.job
 ```bash
 sbatch jobs/celebahq/fid/compute_celebahq_stats.job
 ```
+
+*Note*: This only need to be run once for all experiments with this dataset.
 
 ```bash
 sbatch jobs/celebahq/fid/celebahq_eps1.job
