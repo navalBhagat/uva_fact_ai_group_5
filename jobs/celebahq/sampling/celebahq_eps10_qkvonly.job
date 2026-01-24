@@ -2,11 +2,11 @@
 
 #SBATCH --partition=gpu_a100
 #SBATCH --gpus=1
-#SBATCH --job-name=smp_Csm
+#SBATCH --job-name=smp_qkv
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --time=8:00:00
-#SBATCH --output=slurm/Csmall/slurm_output_%A.out
+#SBATCH --output=slurm/qkv/slurm_output_%A.out
 
 module purge
 module load 2024
@@ -18,9 +18,9 @@ cd ~/fact/dp_lora
 export PYTHONPATH="${PYTHONPATH}:${PWD}"
 
 srun python ./sampling/conditional_sampling.py \
-    --yaml ./reproducibility_experiments/celebahq/celebahq-eps10-C-small.yaml \
+    --yaml ./reproducibility_experiments/celebahq/celebahq-eps10-qkvonly.yaml \
     --ckpt /home/scur0003/fact/dp_lora/logs/celebahq/<>/checkpoints/last.ckpt \
-    --output output/celebahq/celebahq_eps10_C_small.pt \
+    --output output/celebahq/celebahq_eps10_qkvonly.pt \
     --num_samples 10000 \
     --batch_size 200 \
     --decoder_batch_size 25 \

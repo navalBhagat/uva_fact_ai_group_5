@@ -14,4 +14,4 @@ module load Anaconda3/2024.06-1
 
 source activate ldm
 cd ~/fact/dp_lora
-srun python main.py --base ./reproducibility_experiments/finetuning/mnist32-class-dp-eps10.yaml -t --gpus "0," --accelerator gpu -l logs/finetuning/mnist
+srun python main.py --base ./reproducibility_experiments/mnist/mnist32-class-dp-eps10.yaml -t --gpus "0," --accelerator gpu -l logs/finetuning/mnist

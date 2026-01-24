@@ -19,10 +19,10 @@ export PYTHONPATH="${PYTHONPATH}:${PWD}"
 
 # Compute sample stats
 srun python ./fid/compute_samples_stats.py \
-    --samples output/backup/celebahq_eps10_C_small.pt \
-    --output output/backup/celebahq_eps10_C_small_stats.npz
+    --samples output/celebahq/celebahq_eps10_C_small.pt \
+    --output output/celebahq/celebahq_eps10_C_small_stats.npz
 
 # Calculate FID
 srun python ./fid/compute_fid.py \
-    --path1 output/backup/celebahq_train_stats_256.npz \
-    --path2 output/backup/celebahq_eps10_C_small_stats.npz
+    --path1 output/celebahq/celebahq_train_stats_256.npz \
+    --path2 output/celebahq/celebahq_eps10_C_small_stats.npz

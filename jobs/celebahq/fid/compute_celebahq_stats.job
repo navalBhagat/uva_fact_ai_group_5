@@ -21,4 +21,4 @@ export PYTHONPATH="${PYTHONPATH}:${PWD}"
 srun python fid/compute_dataset_stats.py \
     --dataset ldm.data.celebahq.CelebAHQ \
     --args size:256 \
-    --output output/backup/celebahq_train_stats_256.npz
+    --output output/celebahq/celebahq_train_stats_256.npz
