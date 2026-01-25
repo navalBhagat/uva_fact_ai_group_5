@@ -35,7 +35,7 @@ def get_attr_dict(model, data_loader, device):
             hooks.append(layer.register_forward_hook(hook_fn(name)))
 
     with torch.no_grad():
-        for img in data_loader:
+        for [img] in data_loader:
             img = img.to(device)
             out = model(img)
 
@@ -85,17 +85,23 @@ def get_attr_dict(model, data_loader, device):
             num_c = weight.shape[0]
             input_keep = np.ones(num_c, dtype=np.float32) if prev_keep is None else prev_keep
             mask = curr_keep[:,None] * input_keep[:,None]
-            mask = np.broadcast_to(mask, (num_c))
+            mask = np.broadcast_to(mask.reshape(-1,), (num_c,))
             bias_boolean = mask
             prev_keep = curr_keep
             
         else:
-            out_c, in_c, k1, k2 = weight.shape
-            input_keep = np.ones(in_c, dtype=np.float32) if prev_keep is None else prev_keep
-            mask = curr_keep[:, None, None, None] * input_keep[None, :, None, None]
-            mask = np.broadcast_to(mask, (out_c, in_c, k1, k2))
-            prev_keep = curr_keep
-            bias_boolean = curr_keep
+            if 'shortcut' in name:
+                mask = np.zeros(weight.shape)
+                bias_boolean = curr_keep
+                
+            # print(name, type(module), curr_keep.shape, weight.shape)
+            else:
+                out_c, in_c, k1, k2 = weight.shape
+                input_keep = np.ones(in_c, dtype=np.float32) if prev_keep is None else prev_keep
+                mask = curr_keep[:, None, None, None] * input_keep[None, :, None, None]
+                mask = np.broadcast_to(mask, (out_c, in_c, k1, k2))
+                prev_keep = curr_keep
+                bias_boolean = curr_keep
 
         param_2_mask[name + ".weight"] = torch.tensor(mask, device=weight.device, dtype=weight.dtype)
         param_2_mask[name + ".bias"] = bias_boolean

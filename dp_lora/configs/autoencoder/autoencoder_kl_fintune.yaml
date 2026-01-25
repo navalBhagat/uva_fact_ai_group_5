@@ -1,44 +1,41 @@
 model:
   base_learning_rate: 5e-6
-  target: ldm.models.autoencoder.AutoencoderKL
+  target: ldm.models.autoencoder.VQModelInterface
   params:
-    ckpt_path: /home/scur0003/fact/dp_lora_backup/models/ldm/cin256
+    # ckpt_path: /home/scur0003/fact/dp_lora_backup/models/ldm/cin256
     monitor: val/rec_loss
     embed_dim: 3
+    n_embed: 8192
     lossconfig:
-      target: ldm.modules.losses.LPIPSWithDiscriminator
-      params:
-        disc_start: 50001
-        kl_weight: 1.0e-06
-        disc_weight: 0.5
+      target: torch.nn.Identity
 
     dp_config:
       enabled: true
       epsilon: 1
-      delta: 1.0e-06
+      delta: 1.0e-05
       max_grad_norm: 0.0005
       poisson_sampling: true
-      max_batch_size: 10
+      max_batch_size: 8
 
     ddconfig:
-      double_z: true
+      double_z: false
       z_channels: 3
-      resolution: 64
+      resolution: 256
       in_channels: 3
       out_ch: 3
-      ch: 192
+      ch: 128
       ch_mult:
       - 1
       - 2
+      - 4
       num_res_blocks: 2
-      attn_resolutions:
-      - 16
-      - 8
+      attn_resolutions: []
       dropout: 0.0
 data:
   target: main.DataModuleFromConfig
+  feature_path: https://drive.google.com/file/d/1Xv7VNz8P6Znay08VaIWFWgmAoaeqs0oj/view?usp=sharing
   params:
-    batch_size: 1024
+    batch_size: 2048
     num_workers: 6
     wrap: false
     train:
@@ -63,10 +60,10 @@ lightning:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 1000
+        batch_frequency: 3000
         max_images: 8
-        increase_log_steps: True
-
+        increase_log_steps: false
   trainer:
-    benchmark: True
-    accumulate_grad_batches: 2
+    benchmark: true
+    max_epochs: 10
+    accelerator: cpu

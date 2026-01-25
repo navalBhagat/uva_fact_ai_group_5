@@ -9,7 +9,7 @@ from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 from ldm.modules.diffusionmodules.model import Encoder, Decoder
 from ldm.modules.distributions.distributions import DiagonalGaussianDistribution
 from ldm.data.util import get_sample_rate
-import opcacus
+import opacus
 from ldm.privacy.privacy_analysis import compute_noise_multiplier, get_noisysgd_mechanism
 from ldm.util import instantiate_from_config
 
@@ -314,7 +314,14 @@ class VQModelInterface(VQModel):
             quant = h
         quant = self.post_quant_conv(quant)
         dec = self.decoder(quant)
-        return dec
+        return dec, emb_loss, info
+    
+    def forward(self, input, return_pred_indices=False):
+        h = self.encode(input)
+        dec, diff, (_,_,ind) = self.decode(h)
+        if return_pred_indices:
+            return dec, diff, ind
+        return dec, diff
 
 
 class AutoencoderKL(pl.LightningModule):
