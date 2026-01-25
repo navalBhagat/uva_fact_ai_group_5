@@ -18,7 +18,12 @@ python scripts/extract_celeba_hq.py
 ```
 This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`.
 
-**MNIST**: TODO
+**(E)MNIST**: The EMNIST and MNIST datasets are supported via `torchvision` and
+will download automatically. The code directs the download to `$TMPDIR` if
+available; otherwise, it defaults to the `~/.cache` directory.
+
+_Note:_ for EMNIST, `torchvision` uses a broken download link, so the dataloader
+patches this.
 
 **Models**: Download the cin256 checkpoint:
 ```bash
@@ -48,7 +53,8 @@ For example, to run the training with epsilon=1
 sbatch jobs/celebahq/finetuning/celebahq_eps1.job
 ```
 
-Then update the checkpoint for the sampling script based on the logs in `logs/celebahq/`. 
+Then update the checkpoint for the sampling script based on the logs in
+`logs/celebahq/`. 
 
 **Sampling**: 
 ```bash
@@ -70,15 +76,19 @@ sbatch jobs/celebahq/fid/celebahq_eps1.job
 Pre-training + fine-tuning (not used for sampling):
 
 1. Pre-train autoencoder: `sbatch jobs/mnist/pt_autoencoder_emnist.job`
-2. Pre-train LDM: `sbatch jobs/mnist/pt_ldm_emnist.job` (update autoencoder path)
+2. Pre-train LDM: `sbatch jobs/mnist/pt_ldm_emnist.job` (update autoencoder
+   path)
 3. Fine-tune: `sbatch jobs/mnist/ft_mnist_eps*.job` (choose epsilon)
-4. Count parameters: `sbatch jobs/mnist/count_params_mnist.job` (check SLURM output)
+4. Count parameters: `sbatch jobs/mnist/count_params_mnist.job` (check SLURM
+   output)
 
 ### Adding a New Experiment
 
-Start by creating a new config file in `dp_lora/reproducibility_experiments`. See the existing configs for reference, and edit it as required. 
+Start by creating a new config file in `dp_lora/reproducibility_experiments`.
+See the existing configs for reference, and edit it as required. 
 
-Create new SLURM scripts (assuming the corresponding pre-trained checkpoints are available): 
+Create new SLURM scripts (assuming the corresponding pre-trained checkpoints
+are available): 
 
 1) Finetuning: `jobs/<dataset>/finetuning/<experiment>.job`:
 ```bash
@@ -193,7 +203,10 @@ srun python ./fid/compute_fid.py \
 
 ```
 
-**Note**: Adapt the script based on the architecture you are using. These experiments can also be run locally using just the `python` command. If you need to pretrain your own autoencoder or LDM, please refer to the README inside the `dp_lora` directory. 
+**Note**: Adapt the script based on the architecture you are using. These
+experiments can also be run locally using just the `python` command. If you need
+to pretrain your own autoencoder or LDM, please refer to the README inside the
+`dp_lora` directory. 
 
 ## Directory Structure
 
@@ -215,7 +228,7 @@ jobs/                             # SLURM job scripts
 │   └── fid/
 └── mnist/
 
-scripts/                           d# Utility scripts
+scripts/                           # Utility scripts
 ```
 
 
