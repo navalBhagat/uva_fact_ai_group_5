@@ -73,6 +73,7 @@ def get_attr_dict(model, data_loader, device):
         curr_keep = kept_filters[name].astype(np.float32)
         bias_boolean = None
         
+        
         if isinstance(module, VectorQuantizer):
             # VectorQuantizer layer
             in_c, out_c = weight.shape
@@ -103,7 +104,7 @@ def get_attr_dict(model, data_loader, device):
                 prev_keep = curr_keep
                 bias_boolean = curr_keep
 
-        param_2_mask[name + ".weight"] = torch.tensor(mask, device=weight.device, dtype=weight.dtype)
+        param_2_mask[name + ".embedding.weight" if isinstance(module, VectorQuantizer) else name + ".weight"] = torch.tensor(mask, device=weight.device, dtype=weight.dtype)
         param_2_mask[name + ".bias"] = bias_boolean
     
     return param_2_mask

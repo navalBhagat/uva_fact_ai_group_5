@@ -275,6 +275,7 @@ if __name__ == "__main__":
         sample_data_loader = DataLoader(sample_dataset, batch_size=1)
         attr_dict = get_attr_dict(model, sample_data_loader, device='cuda' if not cpu else 'cpu')
         mask_list = []
+
         for name, param in model.named_parameters():
             if name in attr_dict:
                 mask_list.append(attr_dict[name])
@@ -282,6 +283,7 @@ if __name__ == "__main__":
                 mask_list.append(zeros_like(param))
         
         model.set_mask_list(mask_list)
+        
         print("Parameter attribution masks set in model.")
         
         # trainer and callbacks
