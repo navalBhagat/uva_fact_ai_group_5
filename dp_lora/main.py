@@ -15,6 +15,7 @@ from callbacks.cuda import CUDACallback                         # noqa: F401
 from callbacks.image_logger import ImageLogger                  # noqa: F401
 from callbacks.setup import SetupCallback                       # noqa: F401
 from ldm.data.util import DataModuleFromConfig, WrappedDataset  # noqa: F401
+from ldm.data.roi_dataset import get_roi_dataset
 
 from attribute import get_attr_dict
 from torch import ones, zeros_like
@@ -263,18 +264,26 @@ if __name__ == "__main__":
         model = instantiate_from_config(config.model)
 
         # Perform parameter attribution
-        k = config.data.params.train.size
-        sample_input = ones((1,3,k,k))
-        sample_dataset = TensorDataset(sample_input)
+        k = config.data.params.train.params.size ##TODO: Better retrieval of image size
+        sample_dataset = get_roi_dataset(
+            download_url=config.data.feature_path, #Gdrive Link
+            data_dir='./data/roi_images',
+            download_path='eye_roi.zip',
+            image_size=k
+        )
+
         sample_data_loader = DataLoader(sample_dataset, batch_size=1)
-        attr_dict = get_attr_dict(model, sample_data_loader, device='cuda')
-        mask_list = None
+        attr_dict = get_attr_dict(model, sample_data_loader, device='cuda' if not cpu else 'cpu')
+        mask_list = []
         for name, param in model.named_parameters():
             if name in attr_dict:
                 mask_list.append(attr_dict[name])
             else:
                 mask_list.append(zeros_like(param))
-                
+        
+        model.set_mask_list(mask_list)
+        print("Parameter attribution masks set in model.")
+        
         # trainer and callbacks
         trainer_kwargs = dict()
 

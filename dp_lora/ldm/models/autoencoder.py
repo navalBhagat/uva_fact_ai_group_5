@@ -94,6 +94,9 @@ class VQModel(pl.LightningModule):
             print(f"Missing Keys: {missing}")
             print(f"Unexpected Keys: {unexpected}")
 
+    def set_mask_list(self, mask_list):
+        self.mask_list = mask_list
+        
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
             self.model_ema(self)
@@ -234,6 +237,7 @@ class VQModel(pl.LightningModule):
                 # NOTE: The data loader is recreated in main.py, so these parameters do nothing
                 data_loader=data_loader,
                 poisson_sampling=self.dp_config.poisson_sampling,
+                masks = self.mask_list if hasattr(self, 'mask_list') else None
             )
 
             print()

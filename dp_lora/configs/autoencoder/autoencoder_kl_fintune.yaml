@@ -33,7 +33,7 @@ model:
       dropout: 0.0
 data:
   target: main.DataModuleFromConfig
-  feature_path: https://drive.google.com/file/d/1Xv7VNz8P6Znay08VaIWFWgmAoaeqs0oj/view?usp=sharing
+  feature_path: https://drive.google.com/uc?id=1Xv7VNz8P6Znay08VaIWFWgmAoaeqs0oj
   params:
     batch_size: 2048
     num_workers: 6
@@ -66,4 +66,4 @@ lightning:
   trainer:
     benchmark: true
     max_epochs: 10
-    accelerator: cpu
+    accelerator: gpu
