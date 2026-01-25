@@ -7,7 +7,11 @@ model:
     embed_dim: 3
     n_embed: 8192
     lossconfig:
-      target: torch.nn.Identity
+      target: ldm.modules.losses.LPIPSWithDiscriminator
+      params:
+        disc_start: 50001
+        kl_weight: 1.0e-06
+        disc_weight: 0.5
 
     dp_config:
       enabled: true
