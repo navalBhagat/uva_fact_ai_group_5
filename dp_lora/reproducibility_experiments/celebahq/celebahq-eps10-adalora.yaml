@@ -21,13 +21,13 @@ model:
     cond_stage_trainable: true
     use_ema: false
     use_model_lora: true
-    model_lora_r: 8
+    model_lora_r: 16
     model_lora_target: [to_q, to_v, to_k, to_out.0]
     use_cond_lora: false
     DPDM_k: 2
     dp_config:
       enabled: true
-      epsilon: 1
+      epsilon: 10
       delta: 1.0e-05
       max_grad_norm: 0.0005
       poisson_sampling: true
@@ -109,6 +109,16 @@ lightning:
         batch_frequency: 3000
         max_images: 8
         increase_log_steps: false
+    rank_scheduler:
+      target: main.RankSchedulerCallback
+      params:
+        scheduler_config:
+          name: "linear"            
+          initial_rank: 16
+          final_rank: 4
+          total_steps: 30000        
+        adapter_name: "default"
+        log_interval: 100
   trainer:
     benchmark: true
     max_epochs: 10

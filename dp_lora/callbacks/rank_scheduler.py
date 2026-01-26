@@ -53,24 +53,20 @@ class RankSchedulerCallback(Callback):
     
     def _create_scheduler_from_config(self, config: Dict) -> RankScheduler:
         """Create scheduler from config dictionary."""
-        config = dict(config)  # Make a copy
+        config = dict(config)
         name = config.pop("name", "linear")
         return get_rank_scheduler(name, **config)
     
     def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        """Called when training starts."""
         if self.scheduler is None:
-            logger.warning("RankSchedulerCallback: No scheduler configured, skipping rank scheduling")
-            print("🚨 [RankScheduler] WARNING: No scheduler configured!")
+            print("[RankScheduler] WARNING: No scheduler configured!")
             return
         
         msg = f"Starting rank scheduling with {self.scheduler.__class__.__name__}"
-        logger.info(msg)
-        print(f"✓ [RankScheduler] {msg}")
+        print(f"[RankScheduler] {msg}")
         
         msg = f"Initial rank: {self.scheduler.initial_rank}, Final rank: {self.scheduler.final_rank}, Total steps: {self.scheduler.total_steps}"
-        logger.info(msg)
-        print(f"✓ [RankScheduler] {msg}")
+        print(f"[RankScheduler] {msg}")
     
     def on_train_batch_start(
         self,
@@ -95,16 +91,14 @@ class RankSchedulerCallback(Callback):
             if current_rank != self.last_logged_rank:
                 # Rank changed
                 msg = f"Step {global_step}: LoRA rank changed to {current_rank} (prev: {self.last_logged_rank})"
-                logger.info(msg)
-                print(f"📊 [RankScheduler] {msg}")
+                print(f"[RankScheduler] {msg}")
                 self.last_logged_rank = current_rank
             elif global_step % self.log_interval == 0:
                 # Regular interval logging
                 msg = f"Step {global_step}: LoRA rank = {current_rank}"
-                logger.debug(msg)
                 # Only print on major intervals (every 10x log_interval) to avoid spam
                 if global_step % (self.log_interval * 10) == 0:
-                    print(f"📊 [RankScheduler] {msg}")
+                    print(f"[RankScheduler] {msg}")
     
     def _update_model_rank(self, pl_module: "pl.LightningModule", target_rank: int) -> None:
         """
@@ -132,7 +126,7 @@ class RankSchedulerCallback(Callback):
         self._update_lora_parameters_rank(model, target_rank)
         
         if not updated:
-            logger.warning("No PEFT model or LoRA layers found to update rank")
+            print("[RankScheduler] WARNING: No PEFT model or LoRA layers found to update rank")
     
     def _update_peft_model_rank(self, model, target_rank: int) -> None:
         """Update rank in PEFT (Parameter-Efficient Fine-Tuning) models."""
@@ -141,7 +135,7 @@ class RankSchedulerCallback(Callback):
                 config = model.peft_config[self.adapter_name]
                 config.r = target_rank
         except Exception as e:
-            logger.debug(f"Could not update PEFT model rank: {e}")
+            print(f"[RankScheduler] Could not update PEFT model rank: {e}")
     
     def _update_lora_parameters_rank(self, model, target_rank: int) -> None:
         """
@@ -172,4 +166,4 @@ class RankSchedulerCallback(Callback):
                         if isinstance(module.scaling, dict):
                             module.scaling[self.adapter_name] = alpha / target_rank
         except Exception as e:
-            logger.debug(f"Error updating LoRA parameters rank: {e}")
+            print(f"[RankScheduler] Error updating LoRA parameters rank: {e}")
