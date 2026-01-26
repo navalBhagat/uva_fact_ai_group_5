@@ -227,9 +227,9 @@ class VQModel(pl.LightningModule):
                 self.trainer.max_epochs
             )
 
-            _, opt, _ = self.privacy_engine.make_private(
+            _, opt_ae, _ = self.privacy_engine.make_private(
                 module=self,
-                optimizer=opt,
+                optimizer=opt_ae,
                 # The sensitivity of replace-one DP is double that of add-remove
                 #   DP, so the noise multiplier needs to be doubled in DPSGD
                 noise_multiplier=self.noise_scale,
