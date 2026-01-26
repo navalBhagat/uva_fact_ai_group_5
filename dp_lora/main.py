@@ -1,4 +1,8 @@
-import argparse, os, sys, datetime, glob
+import argparse
+import os
+import sys
+import datetime
+import glob
 
 from omegaconf import OmegaConf
 from packaging import version
@@ -208,7 +212,8 @@ if __name__ == "__main__":
             ckpt = os.path.join(logdir, "checkpoints", "last.ckpt")
 
         opt.resume_from_checkpoint = ckpt
-        base_configs = sorted(glob.glob(os.path.join(glob.escape(logdir), "configs/*.yaml")))
+        base_configs = sorted(glob.glob(os.path.join(
+            glob.escape(logdir), "configs/*.yaml")))
         opt.base = base_configs + opt.base
         _tmp = logdir.split("/")
         nowname = _tmp[-1]
@@ -247,7 +252,8 @@ if __name__ == "__main__":
         # merge trainer cli with config
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
         # default to ddp
-        trainer_config["accelerator"] = trainer_config.get("accelerator", "ddp")
+        trainer_config["accelerator"] = trainer_config.get(
+            "accelerator", "ddp")
         for k in nondefault_trainer_args(opt):
             trainer_config[k] = getattr(opt, k)
         if "gpus" not in trainer_config:
@@ -264,16 +270,18 @@ if __name__ == "__main__":
         model = instantiate_from_config(config.model)
 
         # Perform parameter attribution
-        k = config.data.params.train.params.size ##TODO: Better retrieval of image size
+        # TODO: Better retrieval of image size
+        k = config.data.params.train.params.size
         sample_dataset = get_roi_dataset(
-            download_url=config.data.feature_path, #Gdrive Link
+            download_url=config.data.feature_path,  # Gdrive Link
             data_dir='./data/roi_images',
             download_path='eye_roi.zip',
             image_size=k
         )
 
         sample_data_loader = DataLoader(sample_dataset, batch_size=1)
-        attr_dict = get_attr_dict(model, sample_data_loader, device='cuda' if not cpu else 'cpu')
+        attr_dict = get_attr_dict(
+            model, sample_data_loader, device='cuda' if not cpu else 'cpu')
         mask_list = []
 
         for name, param in model.named_parameters():
@@ -281,11 +289,11 @@ if __name__ == "__main__":
                 mask_list.append(attr_dict[name])
             else:
                 mask_list.append(zeros_like(param))
-        
+
         model.set_mask_list(mask_list)
-        
+
         print("Parameter attribution masks set in model.")
-        
+
         # trainer and callbacks
         trainer_kwargs = dict()
 
@@ -329,11 +337,13 @@ if __name__ == "__main__":
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
             default_modelckpt_cfg["params"]["save_top_k"] = 3
 
-        modelckpt_cfg = lightning_config.get("modelcheckpoint", OmegaConf.create())
+        modelckpt_cfg = lightning_config.get(
+            "modelcheckpoint", OmegaConf.create())
         modelckpt_cfg = OmegaConf.merge(default_modelckpt_cfg, modelckpt_cfg)
         print(f"Merged modelckpt-cfg: \n{modelckpt_cfg}")
         if version.parse(pl.__version__) < version.parse('1.4.0'):
-            trainer_kwargs["checkpoint_callback"] = instantiate_from_config(modelckpt_cfg)
+            trainer_kwargs["checkpoint_callback"] = instantiate_from_config(
+                modelckpt_cfg)
 
         # add callback which sets up log directory
         default_callbacks_cfg = {
@@ -369,7 +379,8 @@ if __name__ == "__main__":
             },
         }
         if version.parse(pl.__version__) >= version.parse('1.4.0'):
-            default_callbacks_cfg.update({'checkpoint_callback': modelckpt_cfg})
+            default_callbacks_cfg.update(
+                {'checkpoint_callback': modelckpt_cfg})
 
         callbacks_cfg = lightning_config.get("callbacks", OmegaConf.create())
 
@@ -388,7 +399,8 @@ if __name__ == "__main__":
                     }
                 }
             }
-            default_callbacks_cfg.update(default_metrics_over_trainsteps_ckpt_dict)
+            default_callbacks_cfg.update(
+                default_metrics_over_trainsteps_ckpt_dict)
 
         callbacks_cfg = OmegaConf.merge(default_callbacks_cfg, callbacks_cfg)
         if 'ignore_keys_callback' in callbacks_cfg and hasattr(trainer_opt, 'resume_from_checkpoint'):
@@ -396,7 +408,8 @@ if __name__ == "__main__":
         elif 'ignore_keys_callback' in callbacks_cfg:
             del callbacks_cfg['ignore_keys_callback']
 
-        trainer_kwargs["callbacks"] = [instantiate_from_config(callbacks_cfg[k]) for k in callbacks_cfg]
+        trainer_kwargs["callbacks"] = [instantiate_from_config(
+            callbacks_cfg[k]) for k in callbacks_cfg]
 
         # Build the trainer
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
@@ -414,11 +427,13 @@ if __name__ == "__main__":
         data.setup()
         print("#### Data #####")
         for k in data.datasets:
-            print(f"  {k}, {data.datasets[k].__class__.__name__}, {len(data.datasets[k])}")
+            print(
+                f"  {k}, {data.datasets[k].__class__.__name__}, {len(data.datasets[k])}")
         dp_config = config.model.params.get("dp_config")
         if dp_config and dp_config.enabled and dp_config.poisson_sampling:
             print("Using Poisson sampling")
             data = MyDPLightningDataModule(data)
+            model.set_dataloader(data)
             if dp_config.get("max_batch_size", None):
                 print("Using virtual batch size of", dp_config.max_batch_size)
                 data = VirtualBatchWrapper(data, dp_config.max_batch_size)
@@ -428,7 +443,8 @@ if __name__ == "__main__":
         bs, base_lr = config.data.params.batch_size, config.model.base_learning_rate
         gpus = lightning_config.trainer.gpus.strip(",").split(',')
         ngpu = len(gpus) if not cpu else 1
-        accumulate_grad_batches = lightning_config.trainer.get("accumulate_grad_batches", 1)
+        accumulate_grad_batches = lightning_config.trainer.get(
+            "accumulate_grad_batches", 1)
         lightning_config.trainer.accumulate_grad_batches = accumulate_grad_batches
         if opt.scale_lr:
             model.learning_rate = accumulate_grad_batches * ngpu * bs * base_lr
@@ -471,7 +487,8 @@ if __name__ == "__main__":
             try:
                 trainer.fit(model, data)
             except Exception:
-                trainer.save_checkpoint(os.path.join(ckptdir, "on_exception.ckpt"))
+                trainer.save_checkpoint(
+                    os.path.join(ckptdir, "on_exception.ckpt"))
                 raise
         if not opt.no_test and not trainer.interrupted:
             trainer.test(model, data)

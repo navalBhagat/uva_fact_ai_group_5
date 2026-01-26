@@ -216,3 +216,4 @@ __marimo__/
 *.out
 
 **/data_cache
+*/roi_images
