@@ -36,6 +36,9 @@ class RankSchedulerCallback(Callback):
             log_interval: How often to log
         """
         super().__init__()
+        if scheduler_config is None:
+            self.scheduler = None
+            return
         
         self.adapter_name = adapter_name
         self.target_layers = target_layers
