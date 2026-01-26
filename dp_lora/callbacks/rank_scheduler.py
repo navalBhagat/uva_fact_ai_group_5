@@ -1,5 +1,6 @@
 """
-PyTorch Lightning callback for dynamically scheduling LoRA rank during training.
+PyTorch Lightning callback for layer-wise LoRA rank assignment.
+Assigns fixed ranks to layers based on their depth in the model.
 """
 
 import logging
@@ -7,20 +8,20 @@ from typing import Optional, Dict
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 
-from ldm.rank_scheduler import RankScheduler, get_rank_scheduler
+from ldm.rank_scheduler import get_rank_scheduler, LayerWiseRankScheduler
 
 logger = logging.getLogger(__name__)
 
 
 class RankSchedulerCallback(Callback):
     """
-    Callback to dynamically adjust LoRA rank during training based on a schedule.
+    Callback to assign fixed LoRA ranks based on layer position.
+    Does NOT schedule ranks over time - each layer gets a fixed rank.
     """
     
     def __init__(
         self,
-        scheduler: Optional[RankScheduler] = None,
-        scheduler_config: Optional[Dict] = None,
+        scheduler_config: Dict,
         adapter_name: str = "default",
         target_layers: Optional[list] = None,
         log_interval: int = 100,
@@ -28,142 +29,92 @@ class RankSchedulerCallback(Callback):
     ):
         """
         Args:
-            scheduler: Pre-instantiated RankScheduler object
-            scheduler_config: Dict with keys: name, initial_rank, final_rank, total_steps, and optional params
-                Example: {"name": "cosine", "initial_rank": 16, "final_rank": 4, "total_steps": 10000}
-            adapter_name: Name of the LoRA adapter to schedule
+            scheduler_config: Dict with keys: name, initial_rank, final_rank, schedule_type
+                Example: {"name": "layer-wise", "initial_rank": 16, "final_rank": 4, "schedule_type": "linear"}
+            adapter_name: Name of the LoRA adapter
             target_layers: List of layer names to update. If None, updates all LoRA layers.
-            log_interval: How often to log rank changes
+            log_interval: How often to log
         """
         super().__init__()
         
         self.adapter_name = adapter_name
         self.target_layers = target_layers
         self.log_interval = log_interval
-        self.last_logged_rank = None
         
-        # Initialize scheduler
-        if scheduler is not None:
-            self.scheduler = scheduler
-        elif scheduler_config is not None:
-            self.scheduler = self._create_scheduler_from_config(scheduler_config)
-        else:
-            self.scheduler = None
-            logger.warning("No scheduler provided to RankSchedulerCallback")
-    
-    def _create_scheduler_from_config(self, config: Dict) -> RankScheduler:
-        """Create scheduler from config dictionary."""
-        config = dict(config)
-        name = config.pop("name", "linear")
-        return get_rank_scheduler(name, **config)
+        # Create scheduler from config
+        config = dict(scheduler_config)
+        name = config.pop("name", "layer-wise")
+        self.scheduler = get_rank_scheduler(name, **config)
+        
+        if not isinstance(self.scheduler, LayerWiseRankScheduler):
+            raise ValueError(f"Only 'layer-wise' scheduler is supported, got {name}")
     
     def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        if self.scheduler is None:
-            print("[RankScheduler] WARNING: No scheduler configured!")
-            return
-        
-        msg = f"Starting rank scheduling with {self.scheduler.__class__.__name__}"
-        print(f"[RankScheduler] {msg}")
-        
-        msg = f"Initial rank: {self.scheduler.initial_rank}, Final rank: {self.scheduler.final_rank}, Total steps: {self.scheduler.total_steps}"
-        print(f"[RankScheduler] {msg}")
-    
-    def on_train_batch_start(
-        self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
-        batch,
-        batch_idx: int,
-        dataloader_idx: int
-    ) -> None:
-        """Called at the start of each training batch."""
-        if self.scheduler is None:
-            return
-        
-        global_step = trainer.global_step
-        current_rank = self.scheduler.get_rank(global_step)
-        
-        # Update model ranks
-        self._update_model_rank(pl_module, current_rank)
-        
-        # Log periodically or when rank changes
-        if global_step % self.log_interval == 0 or current_rank != self.last_logged_rank:
-            if current_rank != self.last_logged_rank:
-                # Rank changed
-                msg = f"Step {global_step}: LoRA rank changed to {current_rank} (prev: {self.last_logged_rank})"
-                print(f"[RankScheduler] {msg}")
-                self.last_logged_rank = current_rank
-            elif global_step % self.log_interval == 0:
-                # Regular interval logging
-                msg = f"Step {global_step}: LoRA rank = {current_rank}"
-                # Only print on major intervals (every 10x log_interval) to avoid spam
-                if global_step % (self.log_interval * 10) == 0:
-                    print(f"[RankScheduler] {msg}")
-    
-    def _update_model_rank(self, pl_module: "pl.LightningModule", target_rank: int) -> None:
-        """
-        Update the rank of LoRA modules in the model.
-        
-        This method attempts to update rank for various model architectures:
-        - Standard LoRA models
-        - Diffusion models with LoRA
-        """
+        """Initialize layer-wise ranks at the start of training."""
         model = pl_module.model if hasattr(pl_module, 'model') else pl_module
+        num_lora_layers = self._count_lora_layers(model)
+        self.scheduler.set_num_layers(num_lora_layers)
         
-        updated = False
+        # Apply ranks to all LoRA layers
+        self._apply_layer_wise_ranks(model)
         
-        # Try to find and update peft model
-        if hasattr(model, 'peft_config'):
-            self._update_peft_model_rank(model, target_rank)
-            updated = True
+        # Log configuration
+        print("[RankScheduler] Layer-wise rank assignment initialized")
+        print(f"[RankScheduler] Found {num_lora_layers} LoRA layers")
+        print(f"[RankScheduler] Schedule type: {self.scheduler.schedule_type}")
+        print(f"[RankScheduler] Initial rank: {self.scheduler.initial_rank}, Final rank: {self.scheduler.final_rank}")
         
-        # Check for UNet with LoRA
-        if hasattr(model, 'model') and hasattr(model.model, 'peft_config'):
-            self._update_peft_model_rank(model.model, target_rank)
-            updated = True
-        
-        # Update any modules with lora_A, lora_B parameters
-        self._update_lora_parameters_rank(model, target_rank)
-        
-        if not updated:
-            print("[RankScheduler] WARNING: No PEFT model or LoRA layers found to update rank")
+        # Print sample ranks
+        if num_lora_layers > 0:
+            ranks = [
+                (0, self.scheduler.get_rank_for_layer(0)),
+                (num_lora_layers // 2, self.scheduler.get_rank_for_layer(num_lora_layers // 2)),
+                (num_lora_layers - 1, self.scheduler.get_rank_for_layer(num_lora_layers - 1)),
+            ]
+            print("[RankScheduler] Sample layer ranks:")
+            for layer_idx, rank in ranks:
+                print(f"  Layer {layer_idx}: rank {rank}")
     
-    def _update_peft_model_rank(self, model, target_rank: int) -> None:
-        """Update rank in PEFT (Parameter-Efficient Fine-Tuning) models."""
-        try:
-            if hasattr(model, 'peft_config') and self.adapter_name in model.peft_config:
-                config = model.peft_config[self.adapter_name]
-                config.r = target_rank
-        except Exception as e:
-            print(f"[RankScheduler] Could not update PEFT model rank: {e}")
-    
-    def _update_lora_parameters_rank(self, model, target_rank: int) -> None:
-        """
-        Update rank-related metadata in LoRA layer parameters.
-        This is a supplementary approach for models that directly store rank info.
-        """
-        try:
-            for name, module in model.named_modules():
-                # Skip if not a layer that might have rank info
-                if not (hasattr(module, 'r') or hasattr(module, 'lora_A')):
+    def _apply_layer_wise_ranks(self, model) -> None:
+        """Apply layer-wise ranks to all LoRA layers in the model."""
+        layer_index = 0
+        
+        for name, module in model.named_modules():
+            # Skip if not a layer that might have rank info
+            if not (hasattr(module, 'r') or hasattr(module, 'lora_A')):
+                continue
+            
+            # Filter by target layers if specified
+            if self.target_layers is not None:
+                if not any(layer_pattern in name for layer_pattern in self.target_layers):
                     continue
-                
+            
+            # Get the fixed rank for this layer
+            rank = self.scheduler.get_rank_for_layer(layer_index)
+            
+            # Update rank dict if it exists
+            if hasattr(module, 'r') and isinstance(module.r, dict):
+                if self.adapter_name in module.r:
+                    module.r[self.adapter_name] = rank
+            
+            # Update scaling based on alpha and rank
+            if hasattr(module, 'alpha') and hasattr(module, 'scaling'):
+                if isinstance(module.alpha, dict) and self.adapter_name in module.alpha:
+                    alpha = module.alpha[self.adapter_name]
+                    if isinstance(module.scaling, dict):
+                        module.scaling[self.adapter_name] = alpha / rank
+            
+            layer_index += 1
+    
+    def _count_lora_layers(self, model) -> int:
+        """Count the number of LoRA layers in the model."""
+        count = 0
+        for name, module in model.named_modules():
+            if hasattr(module, 'r') or hasattr(module, 'lora_A'):
                 # Filter by target layers if specified
                 if self.target_layers is not None:
-                    if not any(layer_pattern in name for layer_pattern in self.target_layers):
-                        continue
-                
-                # Update rank dict if it exists (e.g., in LoraLayer)
-                if hasattr(module, 'r') and isinstance(module.r, dict):
-                    if self.adapter_name in module.r:
-                        module.r[self.adapter_name] = target_rank
-                
-                # Update alpha dict based on new rank to maintain scaling
-                if hasattr(module, 'alpha') and hasattr(module, 'scaling'):
-                    if isinstance(module.alpha, dict) and self.adapter_name in module.alpha:
-                        alpha = module.alpha[self.adapter_name]
-                        # Update scaling: alpha / r
-                        if isinstance(module.scaling, dict):
-                            module.scaling[self.adapter_name] = alpha / target_rank
-        except Exception as e:
-            print(f"[RankScheduler] Error updating LoRA parameters rank: {e}")
+                    if any(layer_pattern in name for layer_pattern in self.target_layers):
+                        count += 1
+                else:
+                    count += 1
+        return count

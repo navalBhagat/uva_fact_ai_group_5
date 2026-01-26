@@ -1,68 +1,96 @@
 """
-Rank schedulers for dynamic rank scheduling during training.
-Supports various scheduling strategies for LoRA/AdaLoRA rank adaptation.
+Layer-wise rank scheduler for LoRA fine-tuning.
+Assigns fixed ranks to layers based on their depth in the model.
 """
 
 import numpy as np
-from abc import ABC, abstractmethod
 
 
-class RankScheduler(ABC):
-    """Base class for rank schedulers."""
+class LayerWiseRankScheduler:
+    """
+    Fixed rank scheduler that assigns different ranks to different layers based on depth.
+    Does NOT schedule ranks over time - each layer gets a fixed rank based on its position.
+    """
     
-    def __init__(self, initial_rank: int, final_rank: int, total_steps: int):
+    def __init__(
+        self, 
+        initial_rank: int, 
+        final_rank: int, 
+        total_steps: int = None,
+        schedule_type: str = "linear",
+        num_layers: int = None,
+        **kwargs
+    ):
         """
         Args:
-            initial_rank: Starting rank at step 0
-            final_rank: Target rank at final step
-            total_steps: Total training steps
+            initial_rank: Rank for the first layers (early in the model)
+            final_rank: Rank for the last layers (late in the model)
+            total_steps: Ignored (for config compatibility)
+            schedule_type: "linear" or "cosine" - how to interpolate ranks across layers
+            num_layers: Total number of layers in the model (set during callback init)
         """
         self.initial_rank = initial_rank
         self.final_rank = final_rank
-        self.total_steps = total_steps
+        self.schedule_type = schedule_type.lower()
+        self.num_layers = num_layers
+        self.layer_ranks = {}  # Cache: layer_index -> rank
+        
+        if self.schedule_type not in ["linear", "cosine"]:
+            raise ValueError(f"schedule_type must be 'linear' or 'cosine', got {schedule_type}")
     
-    @abstractmethod
-    def get_rank(self, step: int) -> int:
-        """Get rank for the given training step."""
-        pass
+    def set_num_layers(self, num_layers: int) -> None:
+        """Set the number of layers after the model is initialized."""
+        self.num_layers = num_layers
+        self.layer_ranks = {}  # Reset cache
     
-    def __call__(self, step: int) -> int:
-        return self.get_rank(step)
-
-
-class LinearRankScheduler(RankScheduler):
-    """Linearly interpolate rank from initial to final."""
-    
-    def get_rank(self, step: int) -> int:
-        """Linear interpolation of rank."""
-        t = min(step / self.total_steps, 1.0)
-        rank = self.initial_rank + (self.final_rank - self.initial_rank) * t
-        return max(1, int(round(rank)))
-
-
-class CosineRankScheduler(RankScheduler):
-    """Cosine annealing schedule for rank."""
-    
-    def get_rank(self, step: int) -> int:
-        """Cosine annealing from initial to final rank."""
-        t = min(step / self.total_steps, 1.0)
-        rank = self.final_rank + 0.5 * (self.initial_rank - self.final_rank) * (1 + np.cos(np.pi * t))
-        return max(1, int(round(rank)))
+    def get_rank_for_layer(self, layer_index: int) -> int:
+        """
+        Get the fixed rank for a specific layer based on its index.
+        Layer 0 is the first layer (gets initial_rank or close to it).
+        Layer num_layers-1 is the last layer (gets final_rank).
+        
+        Args:
+            layer_index: 0-indexed position of the layer in the model
+            
+        Returns:
+            Fixed rank for this layer
+        """
+        if self.num_layers is None:
+            raise RuntimeError("num_layers not set. Call set_num_layers() first.")
+        
+        if layer_index in self.layer_ranks:
+            return self.layer_ranks[layer_index]
+        
+        if self.num_layers == 1:
+            rank = self.initial_rank
+        else:
+            # Normalize layer position to [0, 1]
+            t = layer_index / (self.num_layers - 1)
+            
+            if self.schedule_type == "linear":
+                # Linear interpolation
+                rank = self.initial_rank + (self.final_rank - self.initial_rank) * t
+            else:  # cosine
+                # Cosine annealing: start high, decay to final_rank
+                rank = self.final_rank + 0.5 * (self.initial_rank - self.final_rank) * (1 + np.cos(np.pi * t))
+        
+        rank = max(1, int(round(rank)))
+        self.layer_ranks[layer_index] = rank
+        return rank
 
 
 # Registry for rank schedulers
 RANK_SCHEDULERS = {
-    "linear": LinearRankScheduler,
-    "cosine": CosineRankScheduler,
+    "layer-wise": LayerWiseRankScheduler,
 }
 
 
-def get_rank_scheduler(name: str, **kwargs) -> RankScheduler:
+def get_rank_scheduler(name: str, **kwargs) -> LayerWiseRankScheduler:
     """
     Get a rank scheduler by name.
     
     Args:
-        name: Scheduler name (one of the keys in RANK_SCHEDULERS)
+        name: Scheduler name (currently only "layer-wise" is supported)
         **kwargs: Arguments to pass to the scheduler
     
     Returns:

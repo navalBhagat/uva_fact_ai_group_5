@@ -113,10 +113,10 @@ lightning:
       target: main.RankSchedulerCallback
       params:
         scheduler_config:
-          name: "cosine"            
+          name: "layer-wise"
           initial_rank: 16
           final_rank: 4
-          total_steps: 30000        
+          schedule_type: "cosine"
         adapter_name: "default"
         log_interval: 100
   trainer:
