@@ -1,6 +1,7 @@
 # DP-LORA: Differentially Private Fine-Tuning of Diffusion Models
 
-Reproducibility implementation of [Differentially Private Fine-Tuning of Diffusion Models](https://openaccess.thecvf.com/content/ICCV2025/papers/Tsai_Differentially_Private_Fine-Tuning_of_Diffusion_Models_ICCV_2025_paper.pdf).
+Reproducibility implementation of
+[Differentially Private Fine-Tuning of Diffusion Models](https://openaccess.thecvf.com/content/ICCV2025/papers/Tsai_Differentially_Private_Fine-Tuning_of_Diffusion_Models_ICCV_2025_paper.pdf).
 
 ## Setup
 
@@ -14,9 +15,12 @@ bash dp_lora/setup_env.sh
 ### Datasets
 **CelebA-HQ**: Download and extract the dataset:
 ```bash
-python scripts/extract_celeba_hq.py
+python scripts/setup_celeba_hq.py
 ```
-This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`.
+This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`. In
+case the dataset should be downloaded elsewhere, use the `--root` argument and
+specify the desired root directory. By default, this is set to
+`~/.cache/CelebAHQ`.
 
 **(E)MNIST**: The EMNIST and MNIST datasets are supported via `torchvision` and
 will download automatically. The code directs the download to `$TMPDIR` if
@@ -106,9 +110,9 @@ module purge
 module load 2024
 module load Anaconda3/2024.06-1
 
-source activate ldm
-cd ~/fact/dp_lora
-srun python main.py --base ./reproducibility_experiments/<dataset>/<experiment>.yaml -t --gpus "0," --accelerator gpu -l logs/<dataset>
+source activate ldm cd ~/fact/dp_lora srun python main.py --base
+./reproducibility_experiments/<dataset>/<experiment>.yaml -t --gpus "0,"
+--accelerator gpu -l logs/<dataset>
 ```
 
 2) Sampling: `jobs/<dataset>/sampling/<experiment>.job`
@@ -132,17 +136,15 @@ cd ~/fact/dp_lora
 
 export PYTHONPATH="${PYTHONPATH}:${PWD}"
 
-srun python ./sampling/conditional_sampling.py \
-    --yaml ./reproducibility_experiments/<dataset>/<experiment>.yaml \
-    --ckpt <home>/uva_fact_ai_group_5/dp_lora/logs/<dataset>/<>/checkpoints/last.ckpt \
-    --output output/<dataset>/<experiment>.pt \
-    --num_samples 10000 \
-    --batch_size 200 \
-    --decoder_batch_size 25 \
-    --classes 0 1
+srun python ./sampling/conditional_sampling.py \ --yaml
+./reproducibility_experiments/<dataset>/<experiment>.yaml \ --ckpt
+<home>/uva_fact_ai_group_5/dp_lora/logs/<dataset>/<>/checkpoints/last.ckpt \
+--output output/<dataset>/<experiment>.pt \ --num_samples 10000 \ --batch_size
+200 \ --decoder_batch_size 25 \ --classes 0 1
 ```
 
-3) FID: `jobs/<dataset>/fid/compute_<dataset>_stats.job` and `jobs/<dataset>/fid/<experiment>.job`
+3) FID: `jobs/<dataset>/fid/compute_<dataset>_stats.job` and
+`jobs/<dataset>/fid/<experiment>.job`
 ```bash
 #!/bin/bash
 
