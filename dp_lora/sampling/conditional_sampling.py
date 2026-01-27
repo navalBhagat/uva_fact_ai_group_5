@@ -31,63 +31,50 @@ def load_model_from_config(config, ckpt):
         pass
     model = instantiate_from_config(config.model)
     
-    # Try to apply rank scheduler if configured (for adaptive LoRA ranks)
+    # Load state dict and handle rank mismatches by adjusting model's LoRA shapes
+    # This is a workaround for checkpoints trained with adaptive LoRA ranks
     try:
-        rank_scheduler_config = config.lightning.callbacks.rank_scheduler.params.scheduler_config
-        if rank_scheduler_config is not None:
-            print(f"[INFO]: Applying rank scheduler from config: {dict(rank_scheduler_config)}")
+        missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+    except RuntimeError as e:
+        error_str = str(e)
+        if 'size mismatch' in error_str and 'lora' in error_str.lower():
+            print("[INFO]: Detected LoRA rank mismatches, attempting shape-aware loading...")
             
-            # Create the rank scheduler with the same config used during training
-            scheduler = get_rank_scheduler(
-                rank_scheduler_config.name,
-                initial_rank=rank_scheduler_config.initial_rank,
-                final_rank=rank_scheduler_config.final_rank,
-                schedule_type=rank_scheduler_config.schedule_type
-            )
+            # Extract model's current LoRA tensor shapes
+            model_lora_shapes = {}
+            for name, param in model.named_parameters():
+                if 'lora' in name:
+                    model_lora_shapes[name] = param.shape
             
-            # Find all LoRA modules in the model
-            lora_modules = []
-            for name, module in model.named_modules():
-                if hasattr(module, 'lora_A') and isinstance(module.lora_A, dict):
-                    lora_modules.append((name, module))
-            
-            if lora_modules:
-                num_layers = len(lora_modules)
-                scheduler.set_num_layers(num_layers)
-                print(f"[INFO]: Found {num_layers} LoRA modules, resizing to match scheduler ranks")
-                
-                # Apply rank-based resizing to each LoRA module
-                for idx, (name, module) in enumerate(lora_modules):
-                    target_rank = scheduler.get_rank_for_layer(idx)
+            # Resize checkpoint tensors to match model where they don't fit
+            sd_keys_to_resize = []
+            for key in list(sd.keys()):
+                if 'lora' in key and key in model_lora_shapes:
+                    ckpt_shape = sd[key].shape
+                    model_shape = model_lora_shapes[key]
                     
-                    # Resize lora_A and lora_B tensors for each adapter
-                    for adapter_name, lora_a in module.lora_A.items():
-                        current_rank = lora_a.weight.shape[0]
+                    if ckpt_shape != model_shape:
+                        sd_keys_to_resize.append(key)
+                        tensor = sd[key]
                         
-                        if target_rank < current_rank:
-                            # Truncate to target rank
-                            new_a = lora_a.weight.data[:target_rank, :].clone()
-                            lora_a.weight.data = new_a
-                            lora_a.out_features = target_rank
-                            
-                            # Also resize lora_B
-                            lora_b = module.lora_B[adapter_name]
-                            new_b = lora_b.weight.data[:, :target_rank].clone()
-                            lora_b.weight.data = new_b
-                            lora_b.in_features = target_rank
-                            
-                            if idx < 3 or idx >= num_layers - 2:
-                                print(f"  Layer {idx}: resized rank {current_rank} -> {target_rank}")
-    except (ConfigAttributeError, KeyError, AttributeError, TypeError) as e:
-        print(f"[INFO]: No valid rank scheduler config found ({type(e).__name__}), using default initialization")
-    
-    # Load state dict with strict=False to handle any remaining mismatches
-    missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
-    
-    if missing_keys:
-        lora_missing = [k for k in missing_keys if 'lora' in k.lower()]
-        if lora_missing:
-            print(f"[WARNING]: {len(lora_missing)} LoRA keys not loaded (expected if ranks differ)")
+                        # Pad or truncate dimensions as needed
+                        new_tensor = torch.zeros(model_shape, dtype=tensor.dtype, device=tensor.device)
+                        
+                        # Copy what we can from checkpoint
+                        slices = tuple(slice(0, min(c, m)) for c, m in zip(ckpt_shape, model_shape))
+                        new_tensor[slices] = tensor[slices]
+                        
+                        sd[key] = new_tensor
+                        print(f"  Resized {key}: {ckpt_shape} -> {model_shape}")
+            
+            if sd_keys_to_resize:
+                print(f"[INFO]: Resized {len(sd_keys_to_resize)} LoRA tensors")
+                # Now try loading again
+                missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+            else:
+                raise
+        else:
+            raise
     
     model.cuda()
     model.eval()
