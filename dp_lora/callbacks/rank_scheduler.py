@@ -97,18 +97,16 @@ class RankSchedulerCallback(Callback):
             
                         
             if hasattr(module, 'lora_A') and hasattr(module, 'lora_B'):
-                # lora_A: (old_rank, in_features) -> (new_rank, in_features)
-                if hasattr(module.lora_A, self.adapter_name):
-                    old_a = getattr(module.lora_A, self.adapter_name)
-                    setattr(module.lora_A, self.adapter_name, old_a[:rank, :])
+                # lora_A and lora_B are ModuleDicts containing Linear layers
+                if self.adapter_name in module.lora_A:
+                    # lora_A: Linear layer with weight shape (rank, in_features)
+                    old_a = module.lora_A[self.adapter_name]
+                    old_a.weight.data = old_a.weight.data[:rank, :]
                 
-                # lora_B: (out_features, old_rank) -> (out_features, new_rank)
-                if hasattr(module.lora_B, self.adapter_name):
-                    old_b = getattr(module.lora_B, self.adapter_name)
-                    setattr(module.lora_B, self.adapter_name, old_b[:, :rank])
-
-                module.lora_A[self.adapter_name] = old_a[:rank, :]
-                module.lora_B[self.adapter_name] = old_b[:, :rank]
+                # lora_B: Linear layer with weight shape (out_features, rank)
+                if self.adapter_name in module.lora_B:
+                    old_b = module.lora_B[self.adapter_name]
+                    old_b.weight.data = old_b.weight.data[:, :rank]
             
             # Update rank dict if it exists
             if hasattr(module, 'r') and isinstance(module.r, dict):
