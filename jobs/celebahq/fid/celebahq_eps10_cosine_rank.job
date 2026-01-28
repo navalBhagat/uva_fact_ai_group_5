@@ -20,7 +20,7 @@ export PYTHONPATH="${PYTHONPATH}:${PWD}"
 # Compute sample stats
 srun python ./fid/compute_samples_stats.py \
     --samples output/celebahq/celebahq_eps10_cosine_rank.pt \
-    --output output/celebahq/celebahq_eps10_stats.npz
+    --output output/celebahq/celebahq_eps10_cosine_rank_stats.npz
 
 # Calculate FID
 srun python ./fid/compute_fid.py \

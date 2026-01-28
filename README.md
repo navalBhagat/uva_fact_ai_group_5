@@ -3,33 +3,54 @@
 Reproducibility implementation of
 [Differentially Private Fine-Tuning of Diffusion Models](https://openaccess.thecvf.com/content/ICCV2025/papers/Tsai_Differentially_Private_Fine-Tuning_of_Diffusion_Models_ICCV_2025_paper.pdf).
 
+This repository implements differentially private fine-tuning of latent diffusion models using LoRA (Low-Rank Adaptation) to reduce privacy-performance tradeoffs. The code supports CelebA-HQ and MNIST/EMNIST datasets with configurable privacy budgets (epsilon values).
+
 ## Setup
+
+### Prerequisites
+- **OS**: Linux with NVIDIA GPU (A100, V100, or equivalent recommended)
+- **Python**: 3.10+
+- **Disk Space**: 
+  - CelebA-HQ dataset: ~120 GB
+  - Model checkpoints: ~5 GB
+  - Output/logs: ~50 GB (varies with experiments)
+  - Total recommended: **~200 GB**
 
 ### Environment
 Install the Python environment using Anaconda:
 ```bash
 bash dp_lora/setup_env.sh
 ```
-**Requirements**: Linux with NVIDIA GPU.
+
+This installs PyTorch, Lightning, LoRA dependencies, and other requirements. Verify the installation with:
+```bash
+python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
+```
 
 ### Datasets
-**CelebA-HQ**: Download and extract the dataset:
+**CelebA-HQ**
+
+Download and extract the dataset:
 ```bash
 python scripts/setup_celeba_hq.py
 ```
-This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`. In
-case the dataset should be downloaded elsewhere, use the `--root` argument and
-specify the desired root directory. By default, this is set to
-`~/.cache/CelebAHQ`.
+This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`. 
 
-**(E)MNIST**: The EMNIST and MNIST datasets are supported via `torchvision` and
+_Note_: In case the dataset should be downloaded elsewhere, use the `--root` argument and
+specify the desired root directory. By default, this is set to `~/.cache/CelebAHQ`. If you do change this, ensure that the corresponding change is also applied in `dp_lora/ldm/data/celebahq.py`.
+
+**(E)MNIST**
+
+The EMNIST and MNIST datasets are supported via `torchvision` and
 will download automatically. The code directs the download to `$TMPDIR` if
 available; otherwise, it defaults to the `~/.cache` directory.
 
 _Note:_ for EMNIST, `torchvision` uses a broken download link, so the dataloader
 patches this.
 
-**Models**: Download the cin256 checkpoint:
+**Models**
+
+Download the cin256 checkpoint:
 ```bash
 cd dp_lora/models/ldm/cin256
 wget https://ommer-lab.com/files/latent-diffusion/cin.zip
@@ -47,8 +68,9 @@ There are three stages to run for each ablation:
 
 ### SLURM Job Submission
 The `jobs` directory contains SLURM scripts. Before running:
-- Ensure the `logs/` and `output/celebahq` directory exists in `dp_lora`
-- Update the checkpoint in the sampling script after running finetuning.
+- Ensure the `logs/` and `output/celebahq` directories exist in `dp_lora`: `mkdir -p dp_lora/{logs,output/celebahq}`
+- Update checkpoint paths in the sampling scripts after running finetuning
+- **Important**: Update hardcoded paths in SLURM scripts. Replace `~/fact/dp_lora` with your actual project path (e.g., `$HOME/projects/uva_fact_ai_group_5/dp_lora`)
 
 For example, to run the training with epsilon=1
 
@@ -66,11 +88,14 @@ sbatch jobs/celebahq/sampling/celebahq_eps1.job
 ```
 
 **FID Evaluation**:
+
+_Note_: The following only needs to be run once for all experiments with this dataset.
+
 ```bash
 sbatch jobs/celebahq/fid/compute_celebahq_stats.job
 ```
 
-*Note*: This only need to be run once for all experiments with this dataset.
+Then run the FID calculation for your experiment: 
 
 ```bash
 sbatch jobs/celebahq/fid/celebahq_eps1.job
@@ -110,9 +135,15 @@ module purge
 module load 2024
 module load Anaconda3/2024.06-1
 
-source activate ldm cd ~/fact/dp_lora srun python main.py --base
-./reproducibility_experiments/<dataset>/<experiment>.yaml -t --gpus "0,"
---accelerator gpu -l logs/<dataset>
+source activate ldm
+cd $HOME/projects/uva_fact_ai_group_5/dp_lora
+
+srun python main.py \
+    --base ./reproducibility_experiments/<dataset>/<experiment>.yaml \
+    -t \
+    --gpus "0," \
+    --accelerator gpu \
+    -l logs/<dataset>
 ```
 
 2) Sampling: `jobs/<dataset>/sampling/<experiment>.job`
@@ -132,19 +163,24 @@ module load 2024
 module load Anaconda3/2024.06-1
 
 source activate ldm
-cd ~/fact/dp_lora
+cd $HOME/<>/uva_fact_ai_group_5/dp_lora
 
 export PYTHONPATH="${PYTHONPATH}:${PWD}"
 
-srun python ./sampling/conditional_sampling.py \ --yaml
-./reproducibility_experiments/<dataset>/<experiment>.yaml \ --ckpt
-<home>/uva_fact_ai_group_5/dp_lora/logs/<dataset>/<>/checkpoints/last.ckpt \
---output output/<dataset>/<experiment>.pt \ --num_samples 10000 \ --batch_size
-200 \ --decoder_batch_size 25 \ --classes 0 1
+# Update CKPT path based on finetuning logs
+srun python ./sampling/conditional_sampling.py \
+    --yaml ./reproducibility_experiments/<dataset>/<experiment>.yaml \
+    --ckpt logs/<dataset>/<run_name>/checkpoints/last.ckpt \
+    --output output/<dataset>/<experiment>.pt \
+    --num_samples 10000 \
+    --batch_size 200 \
+    --decoder_batch_size 25 \
+    --classes 0 1
 ```
 
-3) FID: `jobs/<dataset>/fid/compute_<dataset>_stats.job` and
-`jobs/<dataset>/fid/<experiment>.job`
+3) FID: `jobs/<dataset>/fid/compute_<dataset>_stats.job` and `jobs/<dataset>/fid/<experiment>.job`
+
+Compute dataset statistics (run once per dataset):
 ```bash
 #!/bin/bash
 
@@ -161,7 +197,7 @@ module load 2024
 module load Anaconda3/2024.06-1
 
 source activate ldm
-cd ~/fact/dp_lora
+cd $HOME/<>/uva_fact_ai_group_5/dp_lora
 
 export PYTHONPATH="${PYTHONPATH}:${PWD}"
 
@@ -170,26 +206,26 @@ srun python fid/compute_dataset_stats.py \
     --dataset ldm.data.<dataset>.<Class> \
     --args size:256 \
     --output output/<dataset>/<dataset>_train_stats_256.npz
-
 ```
 
+Compute FID for experiment:
 ```bash
 #!/bin/bash
 
 #SBATCH --partition=gpu_mig
 #SBATCH --gpus=1
-#SBATCH --job-name=<exp_name>
+#SBATCH --job-name=<exp_name>_fid
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --time=1:00:00
-#SBATCH --output=slurm/<exp_name>/slurm_output_%A.out
+#SBATCH --output=slurm/<exp_name>_fid/slurm_output_%A.out
 
 module purge
 module load 2024
 module load Anaconda3/2024.06-1
 
 source activate ldm
-cd ~/fact/dp_lora
+cd $HOME/<>/uva_fact_ai_group_5/dp_lora
 
 export PYTHONPATH="${PYTHONPATH}:${PWD}"
 
@@ -202,7 +238,6 @@ srun python ./fid/compute_samples_stats.py \
 srun python ./fid/compute_fid.py \
     --path1 output/<dataset>/<dataset>_train_stats_256.npz \
     --path2 output/<dataset>/<exp_name>_stats.npz
-
 ```
 
 **Note**: Adapt the script based on the architecture you are using. These
@@ -232,5 +267,31 @@ jobs/                             # SLURM job scripts
 
 scripts/                           # Utility scripts
 ```
+
+## Workflow
+
+The typical experiment pipeline follows this sequence:
+
+```
+Config File
+    ↓
+Fine-tuning (main.py) → Checkpoint saved to logs/<dataset>/
+    ↓
+Sampling (conditional_sampling.py) → Generated samples output/<dataset>/<exp_name>.pt
+    ↓
+FID Evaluation
+    ├─ Dataset stats (compute_dataset_stats.py) → output/<dataset>/train_stats_256.npz
+    ├─ Sample stats (compute_samples_stats.py) → output/<dataset>/<exp_name>_stats.npz
+    └─ Compute FID (compute_fid.py) → FID score
+```
+
+## Troubleshooting
+
+### Runtime Issues
+
+**Out of Memory (OOM) errors**
+- Reduce `--batch_size`
+- Reduce `--decoder_batch_size` in sampling scripts
+- Use smaller GPU partition (gpu_mig instead of gpu_a100)
 
 
