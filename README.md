@@ -292,6 +292,4 @@ FID Evaluation
 **Out of Memory (OOM) errors**
 - Reduce `--batch_size`
 - Reduce `--decoder_batch_size` in sampling scripts
-- Use smaller GPU partition (gpu_mig instead of gpu_a100)
-
-
+- Use bigger GPU partition (gpu_a100 instead of gpu_mig)
