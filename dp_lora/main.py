@@ -14,6 +14,7 @@ from ldm.privacy.myopacus import MyDPLightningDataModule
 from callbacks.cuda import CUDACallback                         # noqa: F401
 from callbacks.image_logger import ImageLogger                  # noqa: F401
 from callbacks.setup import SetupCallback                       # noqa: F401
+from callbacks.rank_scheduler import RankSchedulerCallback      # noqa: F401
 from ldm.data.util import DataModuleFromConfig, WrappedDataset  # noqa: F401
 
 # code carbon
@@ -338,6 +339,9 @@ if __name__ == "__main__":
             },
             "cuda_callback": {
                 "target": "main.CUDACallback"
+            },
+            "rank_scheduler": {
+                "target": "main.RankSchedulerCallback"
             },
         }
         if version.parse(pl.__version__) >= version.parse('1.4.0'):
