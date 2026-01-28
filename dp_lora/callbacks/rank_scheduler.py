@@ -24,7 +24,6 @@ class RankSchedulerCallback(Callback):
         scheduler_config: Dict,
         adapter_name: str = "default",
         target_layers: Optional[list] = None,
-        log_interval: int = 100,
         **kwargs
     ):
         """
@@ -33,7 +32,6 @@ class RankSchedulerCallback(Callback):
                 Example: {"name": "layer-wise", "initial_rank": 16, "final_rank": 4, "schedule_type": "linear"}
             adapter_name: Name of the LoRA adapter
             target_layers: List of layer names to update. If None, updates all LoRA layers.
-            log_interval: How often to log
         """
         super().__init__()
         if scheduler_config is None:
@@ -42,7 +40,6 @@ class RankSchedulerCallback(Callback):
         
         self.adapter_name = adapter_name
         self.target_layers = target_layers
-        self.log_interval = log_interval
         
         # Create scheduler from config
         config = dict(scheduler_config)

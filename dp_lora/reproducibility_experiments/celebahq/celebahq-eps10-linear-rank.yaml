@@ -116,9 +116,8 @@ lightning:
           name: "layer-wise"
           initial_rank: 16
           final_rank: 4
-          schedule_type: "cosine"
+          schedule_type: "linear"
         adapter_name: "default"
-        log_interval: 100
   trainer:
     benchmark: true
     max_epochs: 10

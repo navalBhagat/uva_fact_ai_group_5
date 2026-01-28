@@ -32,7 +32,7 @@ def load_model_from_config(config, ckpt):
     model = instantiate_from_config(config.model)
     
     # Load state dict and handle rank mismatches by adjusting model's LoRA shapes
-    # This is a workaround for checkpoints trained with adaptive LoRA ranks
+    # This is a workaround for checkpoints trained with layer-wise ranks
     try:
         missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
     except RuntimeError as e:
