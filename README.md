@@ -37,7 +37,9 @@ python scripts/setup_celeba_hq.py
 This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`. 
 
 _Note_: In case the dataset should be downloaded elsewhere, use the `--root` argument and
-specify the desired root directory. By default, this is set to `~/.cache/CelebAHQ`. If you do change this, ensure that the corresponding change is also applied in `dp_lora/ldm/data/celebahq.py`.
+specify the desired root directory. By default, this is set to `~/.cache/CelebAHQ`. If
+you do change this, ensure that the corresponding change is also applied in
+`dp_lora/ldm/data/celebahq.py`.
 
 **(E)MNIST**
 
@@ -110,6 +112,9 @@ Pre-training + fine-tuning (not used for sampling):
 3. Fine-tune: `sbatch jobs/mnist/ft_mnist_eps*.job` (choose epsilon)
 4. Count parameters: `sbatch jobs/mnist/count_params_mnist.job` (check SLURM
    output)
+   **Important:** to run the count parameters script, make sure to edit the
+   paths within the `.job` file to match the locations of the checkpoints on
+   your system.
 
 ### Adding a New Experiment
 
