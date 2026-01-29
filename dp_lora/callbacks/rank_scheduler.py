@@ -21,7 +21,7 @@ class RankSchedulerCallback(Callback):
     
     def __init__(
         self,
-        scheduler_config: Dict,
+        scheduler_config: Dict = None,
         adapter_name: str = "default",
         target_layers: Optional[list] = None,
         **kwargs
@@ -36,6 +36,8 @@ class RankSchedulerCallback(Callback):
         super().__init__()
         if scheduler_config is None:
             self.scheduler = None
+            self.target_layers = None
+            self.adapter_name = adapter_name
             return
         
         self.adapter_name = adapter_name
@@ -51,6 +53,8 @@ class RankSchedulerCallback(Callback):
     
     def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         """Initialize layer-wise ranks at the start of training."""
+        if self.scheduler is None:
+            return
         model = pl_module.model if hasattr(pl_module, 'model') else pl_module
         num_lora_layers = self._count_lora_layers(model)
         self.scheduler.set_num_layers(num_lora_layers)

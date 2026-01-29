@@ -19,7 +19,8 @@ This repository implements differentially private fine-tuning of latent diffusio
 ### Environment
 Install the Python environment using Anaconda:
 ```bash
-bash dp_lora/setup_env.sh
+cd dp_lora
+bash setup_env.sh
 ```
 
 This installs PyTorch, Lightning, LoRA dependencies, and other requirements. Verify the installation with:
@@ -30,11 +31,13 @@ python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {
 ### Datasets
 **CelebA-HQ**
 
-Download and extract the dataset:
+Download and extract the dataset from the root directory:
 ```bash
+cd ../
+conda activate ldm
 python scripts/setup_celeba_hq.py
 ```
-This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`. 
+This downloads from Hugging Face and saves to `~/.cache/CelebAHQ/images/`. In case the attributes metadata file isn't downloadable due to rate limiting on the Google Drive, please follow the following [link]( https://drive.google.com/uc?export=download&id=0B7EVK8r0v71pblRyaVFSWGxPY0U) to manually download it and save it in `~/.cache/CelebAHQ/`.
 
 _Note_: In case the dataset should be downloaded elsewhere, use the `--root` argument and
 specify the desired root directory. By default, this is set to `~/.cache/CelebAHQ`. If

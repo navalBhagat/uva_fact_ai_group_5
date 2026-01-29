@@ -125,8 +125,12 @@ if __name__ == "__main__":
     img_dir.mkdir(parents=True, exist_ok=True)
     out_root.mkdir(parents=True, exist_ok=True)
 
-    if not attr_file.exists():
-        download_attributes(attr_file)
+    try:
+        if not attr_file.exists():
+            download_attributes(attr_file)
+    except Exception as e:
+        print(f"[WARNING]: Failed to download attributes file: {e}. Continuing without attributes...")
+        print("[IMPORTANT]: Please follow the link and download the file manually into the cache directory (~/cache/CelebAHQ).")
 
     if not parquet_dir.exists() or not any(parquet_dir.glob("*.parquet")):
         download_dataset(dataset_dir)

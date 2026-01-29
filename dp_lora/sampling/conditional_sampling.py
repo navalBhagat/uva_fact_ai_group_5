@@ -114,7 +114,7 @@ def main(args):
     # Create tracker early so it knows where to write emissions.csv (inside logdir)
     carbon_tracker = OfflineEmissionsTracker(
         country_iso_code="NLD",   # Snellius is in Netherlands
-        output_dir="output/emissions/conditional_sampling",        # emissions.csv goes into this folder
+        output_dir="output/celebahq",        # emissions.csv goes into this folder
         save_to_file=True,
         log_level="info",
     )
