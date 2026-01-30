@@ -119,6 +119,48 @@ Pre-training + fine-tuning (not used for sampling):
    paths within the `.job` file to match the locations of the checkpoints on
    your system.
 
+### Autoencoder Fine-Tuning with DP (No-DP, Global-DP, RoI-only DP)
+
+We provide instructions for fine-tuning an autoencoder on CelebA-HQ with three different privacy settings: non-private (No-DP), global differential privacy (Global-DP), and region-of-interest selective privacy (RoI-only DP).
+
+#### Quick Start: No-DP (Non-Private) Fine-Tuning
+
+For global and no-dp settings the autoencoder fine-tuning can be run with instructions found in `dp_lora/README.md`, with the config updated to have DP disabled/enabled, and dataset updated to use CelebA-HQ. See the existing configs in `reproducibilty_experiments` as a guide. 
+
+*RoI-Only Differential Privacy Fine-Tuning*
+
+For this approach the DP settings have to be enabled in the config. Additionally, the dataset needs to be set to use 
+
+```
+data:
+  target: main.DataModuleFromConfig
+  feature_path: https://drive.google.com/uc?id=1Xv7VNz8P6Znay08VaIWFWgmAoaeqs0oj  # RoI dataset URL
+  params:
+    batch_size: 2048
+    num_workers: 6
+    wrap: false
+    train:
+      target: ldm.data.celebahq.CelebAHQ
+      params:
+        split: train
+        target_type: class
+        class_attrs: [Male]
+        size: 256
+    validation:
+      target: ldm.data.celebahq.CelebAHQ
+      params:
+        split: test
+        target_type: class
+        class_attrs: [Male]
+        size: 256
+```
+
+RoI-only DP training automatically:
+- Downloads RoI dataset (eye regions) if not cached
+- Computes parameter importance via activation analysis
+- Generates binary masks for important parameters (~6% of total)
+- Applies selective DP: noise only on masked parameters
+
 ### Adding a New Experiment
 
 Start by creating a new config file in `dp_lora/reproducibility_experiments`.
