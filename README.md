@@ -142,6 +142,8 @@ RoI-only DP training automatically:
 - Generates binary masks for important parameters (~6% of total)
 - Applies selective DP: noise only on masked parameters
 
+To run this extension clone the opacus library from here https://github.com/Rakesh-123-cryp/opacus-privacy.git instead of using pip to install it.
+
 Run the following command to start training: 
 ```bash
 cd dp_lora
