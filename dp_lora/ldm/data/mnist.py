@@ -7,7 +7,9 @@ from torchvision import datasets
 class MNISTBase(datasets.MNIST):
     def __init__(self, datadir, size=None, **kwargs):
         self.size = size
-        cachedir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+        # On Snellius, it is preferred to store the data in scratch-local,
+        # which is found at the $TMPDIR variable.
+        cachedir = os.environ.get("TMPDIR", os.path.expanduser("~/.cache"))
         super().__init__(root=os.path.join(cachedir, datadir), **kwargs)
 
     def __getitem__(self, index):

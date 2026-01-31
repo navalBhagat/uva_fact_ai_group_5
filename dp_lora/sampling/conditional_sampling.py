@@ -6,9 +6,10 @@ from omegaconf import OmegaConf
 from omegaconf.errors import ConfigAttributeError
 import torch
 from torchvision.utils import save_image
-
+from codecarbon import OfflineEmissionsTracker
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
+from ldm.rank_scheduler import get_rank_scheduler
 
 
 def set_seeds(seed):
@@ -29,7 +30,52 @@ def load_model_from_config(config, ckpt):
     except ConfigAttributeError:
         pass
     model = instantiate_from_config(config.model)
-    model.load_state_dict(sd, strict=False)
+    
+    # Load state dict and handle rank mismatches by adjusting model's LoRA shapes
+    # This is a workaround for checkpoints trained with layer-wise ranks
+    try:
+        missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+    except RuntimeError as e:
+        error_str = str(e)
+        if 'size mismatch' in error_str and 'lora' in error_str.lower():
+            print("[INFO]: Detected LoRA rank mismatches, attempting shape-aware loading...")
+            
+            # Extract model's current LoRA tensor shapes
+            model_lora_shapes = {}
+            for name, param in model.named_parameters():
+                if 'lora' in name:
+                    model_lora_shapes[name] = param.shape
+            
+            # Resize checkpoint tensors to match model where they don't fit
+            sd_keys_to_resize = []
+            for key in list(sd.keys()):
+                if 'lora' in key and key in model_lora_shapes:
+                    ckpt_shape = sd[key].shape
+                    model_shape = model_lora_shapes[key]
+                    
+                    if ckpt_shape != model_shape:
+                        sd_keys_to_resize.append(key)
+                        tensor = sd[key]
+                        
+                        # Pad or truncate dimensions as needed
+                        new_tensor = torch.zeros(model_shape, dtype=tensor.dtype, device=tensor.device)
+                        
+                        # Copy what we can from checkpoint
+                        slices = tuple(slice(0, min(c, m)) for c, m in zip(ckpt_shape, model_shape))
+                        new_tensor[slices] = tensor[slices]
+                        
+                        sd[key] = new_tensor
+                        print(f"  Resized {key}: {ckpt_shape} -> {model_shape}")
+            
+            if sd_keys_to_resize:
+                print(f"[INFO]: Resized {len(sd_keys_to_resize)} LoRA tensors")
+                # Now try loading again
+                missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+            else:
+                raise
+        else:
+            raise
+    
     model.cuda()
     model.eval()
     return model
@@ -63,6 +109,16 @@ def main(args):
 
     num_samples_per_class = args.num_samples // len(args.classes)
     print(f"[INFO]: Will generate {num_samples_per_class} samples per class for {len(args.classes)} classes")
+    
+    # code carbon
+    # Create tracker early so it knows where to write emissions.csv (inside logdir)
+    carbon_tracker = OfflineEmissionsTracker(
+        country_iso_code="NLD",   # Snellius is in Netherlands
+        output_dir="output/celebahq",        # emissions.csv goes into this folder
+        save_to_file=True,
+        log_level="info",
+    )
+    carbon_tracker.start()
 
     with model.ema_scope():
         # Get the conditioning information for each label
@@ -97,6 +153,9 @@ def main(args):
                 batch_samples = model.decode_first_stage(batch_samples).cpu()
                 all_samples.append(batch_samples)
 
+    emissions = carbon_tracker.stop()
+    print("CodeCarbon emissions (kg CO2):", emissions)
+    
     # Collate images and save
     images = torch.vstack(all_samples)
     if args.output.endswith(".pt"):

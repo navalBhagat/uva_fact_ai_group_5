@@ -8,6 +8,7 @@ conda env create -f environment.yaml
 
 echo ""
 echo "Activating environment"
+eval "$(conda shell.bash hook)"
 conda activate ldm
 
 echo ""
