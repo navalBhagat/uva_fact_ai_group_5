@@ -119,41 +119,22 @@ Pre-training + fine-tuning (not used for sampling):
    paths within the `.job` file to match the locations of the checkpoints on
    your system.
 
-### Autoencoder Fine-Tuning with DP (No-DP, Global-DP, RoI-only DP)
+## Autoencoder Fine-Tuning with DP (No-DP, Global-DP, RoI-only DP)
+
+**Note that to run this code you will have to checkout the branch `ae-finetune`**
+```bash
+git checkout -b ae-finetune origin/ae-finetune
+```
 
 We provide instructions for fine-tuning an autoencoder on CelebA-HQ with three different privacy settings: non-private (No-DP), global differential privacy (Global-DP), and region-of-interest selective privacy (RoI-only DP).
 
-#### Quick Start: No-DP (Non-Private) Fine-Tuning
+For global and no-dp settings the autoencoder training can be run, with the config `dp_lora/reproducibility_experiments/celebahq/celebahq_autoencoder_finetune.yaml` updated to have DP disabled/enabled and comment out the `feature_path` property.
 
-For global and no-dp settings the autoencoder fine-tuning can be run with instructions found in `dp_lora/README.md`, with the config updated to have DP disabled/enabled, and dataset updated to use CelebA-HQ. See the existing configs in `reproducibilty_experiments` as a guide. 
+### Quick Start: RoI-only DP Fine-Tuning
 
 *RoI-Only Differential Privacy Fine-Tuning*
 
-For this approach the DP settings have to be enabled in the config. Additionally, the dataset needs to be set to use 
-
-```
-data:
-  target: main.DataModuleFromConfig
-  feature_path: https://drive.google.com/uc?id=1Xv7VNz8P6Znay08VaIWFWgmAoaeqs0oj  # RoI dataset URL
-  params:
-    batch_size: 2048
-    num_workers: 6
-    wrap: false
-    train:
-      target: ldm.data.celebahq.CelebAHQ
-      params:
-        split: train
-        target_type: class
-        class_attrs: [Male]
-        size: 256
-    validation:
-      target: ldm.data.celebahq.CelebAHQ
-      params:
-        split: test
-        target_type: class
-        class_attrs: [Male]
-        size: 256
-```
+For this approach the DP settings have to be enabled in the config. Additionally, the dataset needs to be set to use the precomputed RoI dataset.
 
 RoI-only DP training automatically:
 - Downloads RoI dataset (eye regions) if not cached
@@ -161,7 +142,14 @@ RoI-only DP training automatically:
 - Generates binary masks for important parameters (~6% of total)
 - Applies selective DP: noise only on masked parameters
 
-### Adding a New Experiment
+Run the following command to start training: 
+```bash
+cd dp_lora
+python main.py --base ./reproducibility_experiments/celebahq/celebahq_autoencoder_finetune.yaml -t --gpus 0,
+```
+*TODO: Add classification accuracy script instructions*
+
+## Adding a New Experiment
 
 Start by creating a new config file in `dp_lora/reproducibility_experiments`.
 See the existing configs for reference, and edit it as required. 

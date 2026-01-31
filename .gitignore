@@ -215,3 +215,4 @@ __marimo__/
 *.out
 **/data_cache
 *.zip
+**/roi_images
