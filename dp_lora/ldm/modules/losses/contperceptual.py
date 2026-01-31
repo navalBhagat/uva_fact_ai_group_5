@@ -138,7 +138,7 @@ class NLayerDiscriminator_dp(nn.Module):
             use_actnorm (bool) -- use ActNorm instead of GroupNorm
             num_groups (int) -- number of groups for GroupNorm (default: 32)
         """
-        super(NLayerDiscriminator, self).__init__()
+        super(NLayerDiscriminator_dp, self).__init__()
         if not use_actnorm:
             # Use GroupNorm instead of BatchNorm
             norm_layer = functools.partial(nn.GroupNorm, num_groups)
