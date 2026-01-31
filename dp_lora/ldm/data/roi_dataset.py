@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 from torchvision import transforms
+from torchvision.transforms.functional import resize, pad
 from PIL import Image
 import zipfile
 import os
@@ -20,7 +21,46 @@ def _download_and_extract(url, download_path, extract_path):
         zip_ref.extractall(extract_path)
     
     # os.remove(download_path)
-        
+
+from torchvision.transforms.functional import pad, resize
+
+class PadToSize:
+    def __init__(
+        self,
+        H=218,
+        W=178,
+        resize_h=64,
+        resize_w=64,
+        fill=0
+    ):
+        self.H = H
+        self.W = W
+        self.resize_h = resize_h
+        self.resize_w = resize_w
+        self.fill = fill
+
+    def __call__(self, img):
+        # PIL size: (W, H)
+        w, h = img.size
+
+        pad_top = (self.H - h) // 2
+        pad_bottom = self.H - h - pad_top
+        pad_left = (self.W - w) // 2
+        pad_right = self.W - w - pad_left
+
+        img = pad(
+            img,
+            (pad_left, pad_top, pad_right, pad_bottom),
+            fill=self.fill
+        )
+
+        img = resize(
+            img,
+            (self.resize_h, self.resize_w),
+            antialias=True
+        )
+        return img
+
         
 def get_roi_dataset(download_url, data_dir='./data', download_path='eye_roi.zip', image_size=128):
     _download_and_extract(download_url, download_path, data_dir)
@@ -40,7 +80,7 @@ class ROIDataset(Dataset):
             self.transform = transform
         else:
             self.transform = transforms.Compose([
-                transforms.Resize((img_size, img_size)),
+                PadToSize(resize_h=img_size, resize_w=img_size),
                 transforms.ToTensor(),
             ])
 

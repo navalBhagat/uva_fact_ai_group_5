@@ -23,7 +23,7 @@ from ldm.data.util import DataModuleFromConfig, WrappedDataset  # noqa: F401
 from ldm.data.roi_dataset import get_roi_dataset
 
 from attribute import get_attr_dict
-from torch import ones, zeros_like
+from torch import ones, zeros_like, sum
 from torch.utils.data import DataLoader, TensorDataset
 
 # code carbon
@@ -272,28 +272,43 @@ if __name__ == "__main__":
 
         # Perform parameter attribution
         # TODO: Better retrieval of image size
-        k = config.data.params.train.params.size
-        sample_dataset = get_roi_dataset(
-            download_url=config.data.feature_path,  # Gdrive Link
-            data_dir='./data/roi_images',
-            download_path='eye_roi.zip',
-            image_size=k
-        )
-
-        sample_data_loader = DataLoader(sample_dataset, batch_size=1)
-        attr_dict = get_attr_dict(
-            model, sample_data_loader, device='cuda' if not cpu else 'cpu')
-        mask_list = []
-
-        for name, param in model.named_parameters():
-            if name in attr_dict:
-                mask_list.append(attr_dict[name])
+        if 'dp_config' in config.model.params:
+            if not config.model.params.dp_config.local:
+                print("================= Performing Global DP on model =================")
+                mask_list = None
             else:
-                mask_list.append(zeros_like(param))
+                print("================= Performing Local DP on model =================")
+                k = config.data.params.train.params.size
+                sample_dataset = get_roi_dataset(
+                    download_url=config.data.feature_path,  # Gdrive Link
+                    data_dir='./data/roi_images',
+                    download_path='eye_roi.zip',
+                    image_size=k
+                )
 
-        model.set_mask_list(mask_list)
+                sample_data_loader = DataLoader(sample_dataset, batch_size=1)
+                attr_dict = get_attr_dict(
+                    model, sample_data_loader, device='cuda' if not cpu else 'cpu')
+                mask_list = []
+
+                total = 0
+                added = 0
+                from math import prod
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        if name in attr_dict:
+                            total+= prod(list(attr_dict[name].shape))
+                            added+= attr_dict[name].sum().item()
+                            mask_list.append(attr_dict[name])
+                        else:
+                            mask_list.append(zeros_like(param))
+                print(f"Total parameters considered for attribution: {total}")
+                print(f"Number of non-zero parameters: {added}")
+
+            model.set_mask_list(mask_list)
 
         print("Parameter attribution masks set in model.")
+        model.train()
 
         # trainer and callbacks
         trainer_kwargs = dict()

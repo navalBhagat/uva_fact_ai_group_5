@@ -21,6 +21,7 @@ def get_attr_dict(model, data_loader, device):
                 out = min_encodings.detach().cpu()
             else:
                 out = output.detach().cpu()
+            # print(activations[name], "#############")
             activations[name][0].append(out)
             order_of_modules.append((name, module))
         return _hook
@@ -38,6 +39,9 @@ def get_attr_dict(model, data_loader, device):
         for [img] in data_loader:
             img = img.to(device)
             out = model(img)
+
+    for h in hooks:
+        h.remove()
 
     for name in activations:
         activations[name][0] = torch.cat(activations[name][0], dim=0)
@@ -73,7 +77,6 @@ def get_attr_dict(model, data_loader, device):
         curr_keep = kept_filters[name].astype(np.float32)
         bias_boolean = None
         
-        
         if isinstance(module, VectorQuantizer):
             # VectorQuantizer layer
             in_c, out_c = weight.shape
@@ -91,17 +94,20 @@ def get_attr_dict(model, data_loader, device):
             prev_keep = curr_keep
             
         else:
+            # print(name, type(module), curr_keep.shape, weight.shape)
             if 'shortcut' in name:
                 mask = np.zeros(weight.shape)
                 bias_boolean = curr_keep
                 
-            # print(name, type(module), curr_keep.shape, weight.shape)
             else:
                 out_c, in_c, k1, k2 = weight.shape
                 input_keep = np.ones(in_c, dtype=np.float32) if prev_keep is None else prev_keep
                 mask = curr_keep[:, None, None, None] * input_keep[None, :, None, None]
                 mask = np.broadcast_to(mask, (out_c, in_c, k1, k2))
-                prev_keep = curr_keep
+                if name == 'quant_conv':
+                    prev_keep = None
+                else:
+                    prev_keep = curr_keep
                 bias_boolean = curr_keep
 
         param_2_mask[name + ".embedding.weight" if isinstance(module, VectorQuantizer) else name + ".weight"] = torch.tensor(mask, device=weight.device, dtype=weight.dtype)

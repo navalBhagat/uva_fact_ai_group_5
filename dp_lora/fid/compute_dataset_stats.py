@@ -15,7 +15,6 @@ from torch.utils.data import DataLoader, Dataset
 from fid.cifar10_fid_stats_pytorch_fid import stats_from_dataloader, set_seeds
 from ldm.util import instantiate_from_config
 
-
 class DatasetWrapper(Dataset):
     def __init__(self, dataset):
         self.dataset = dataset
