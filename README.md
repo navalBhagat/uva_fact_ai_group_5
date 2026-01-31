@@ -36,8 +36,9 @@ unzip cin.zip
 
 This will download the `cin256/model.ckpt` file which is required for our experiments.
 
-## Usage
+## Training
 
-The `jobs` directory contains SLURM job scripts for the different experiments.
+```bash
+python main.py --base ./configs/autoencoder_kl_celeb.yaml -t -gpus 0,
+```
 
-*TO DO:* add a list of job scripts and explain which results they produce.
