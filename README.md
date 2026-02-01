@@ -147,7 +147,8 @@ Run the following command to start training:
 cd dp_lora
 python main.py --base ./reproducibility_experiments/celebahq/celebahq_autoencoder_finetune.yaml -t --gpus 0,
 ```
-*TODO: Add classification accuracy script instructions*
+
+For the task of classification we validate our claim by running ona  small scale ResNet-9 architecture on CelebA Gender Classification dataset of 20k Images. The file `dp_lora/classification.ipynb` shows the experiments ran. On an average an improvement of ~2% can be observed. This trend is epxected and potentially increase with larger and more complex architectures.
 
 ## Adding a New Experiment
 
