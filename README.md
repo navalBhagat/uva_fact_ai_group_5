@@ -149,7 +149,8 @@ Run the following command to start training:
 cd dp_lora
 python main.py --base ./reproducibility_experiments/celebahq/celebahq_autoencoder_finetune.yaml -t --gpus 0,
 ```
-*TODO: Add classification accuracy script instructions*
+
+To validate our claim of Local-DP, we finetuned ResNet-9 network on a subset fo [CelebA](https://www.kaggle.com/datasets/ashishjangra27/gender-detection-20k-images-celeb) for the Gender Classification task. The results can be found in the notebook `dp_lora/classification.ipynb`. We can observe ~2% improvement over the global-DP approach and this trend will either persist or may results in greater gains when trained on more complex and bigger architectures. Being an unexplored application of DP, this approach proves to be a good path of research.
 
 ## Adding a New Experiment
 
